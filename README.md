@@ -6,6 +6,44 @@
 
 **Интеллектуальная система анализа рекламных кампаний в Binom с AI-модулями**
 
+### 🎥 Демонстрация
+
+https://github.com/garik128/binom_assistant/raw/main/demo/video.mp4
+
+<details>
+<summary>📸 <b>Скриншоты интерфейса</b> (нажмите чтобы развернуть)</summary>
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="demo/dashboard.jpg" alt="Dashboard"/>
+      <p align="center"><b>Главная панель</b></p>
+    </td>
+    <td width="50%">
+      <img src="demo/modules.jpg" alt="Modules"/>
+      <p align="center"><b>Модули аналитики</b></p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <img src="demo/alerts.jpg" alt="Alerts"/>
+      <p align="center"><b>Алерты и уведомления</b></p>
+    </td>
+    <td>
+      <img src="demo/ai.jpg" alt="AI Agent"/>
+      <p align="center"><b>AI-агент</b></p>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <img src="demo/settings.jpg" alt="Settings"/>
+      <p align="center"><b>Настройки системы</b></p>
+    </td>
+  </tr>
+</table>
+
+</details>
+
 ---
 
 
