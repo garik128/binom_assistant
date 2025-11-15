@@ -8,7 +8,7 @@
 
 ### 🎥 Демонстрация
 
-<iframe src="https://player.vimeo.com/video/1137208861" width="640" height="360" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+**[▶️ Смотреть видео на Vimeo](https://vimeo.com/1137208861)**
 
 <details>
 <summary>📸 <b>Скриншоты интерфейса</b> (нажмите чтобы развернуть)</summary>
