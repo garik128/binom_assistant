@@ -1,0 +1,623 @@
+/* Обновленные стили для селектора агентов */
+
+/* Компактный дизайн карточек агентов */
+.agent-category {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem !important;
+    padding: 1rem !important;
+    background: var(--bg-tertiary);
+    border: 2px solid transparent;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+    cursor: default !important;
+    margin-bottom: 10px;
+}
+
+.agent-category:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-color);
+}
+
+.agent-category.selected {
+    background: rgba(var(--accent-rgb), 0.1);
+    border-color: var(--accent-color);
+}
+
+.agent-category-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.agent-category-icon {
+    font-size: 1.75rem !important;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.agent-category-info {
+    flex: 1;
+}
+
+.agent-category-info h4 {
+    margin: 0 0 0.375rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.agent-category-info p {
+    margin: 0 0 0.375rem 0;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.agent-category-modules {
+    display: inline-block;
+    padding: 0.1875rem 0.4375rem !important;
+    background: var(--bg-secondary) !important;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.6875rem !important;
+    color: var(--text-muted) !important;
+    font-weight: 500;
+}
+
+.agent-category-actions {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.25rem;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    align-items: center;
+    width: 100%;
+}
+
+.btn-agent-select,
+.btn-agent-details,
+.btn-agent-prompts {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.btn-agent-select {
+    background: var(--accent-color, #2563eb);
+    color: white;
+}
+
+.btn-agent-select:hover {
+    background: var(--accent-color-hover, #1d4ed8);
+    transform: translateY(-1px);
+}
+
+.btn-agent-details,
+.btn-agent-prompts {
+    background: var(--card-bg, #1e1e1e);
+    color: var(--text-primary, #fff);
+    border: 1px solid var(--border-color, #333);
+}
+
+.btn-agent-details:hover,
+.btn-agent-prompts:hover {
+    background: var(--hover-bg, #2a2a2a);
+    border-color: var(--accent-color, #2563eb);
+    transform: translateY(-1px);
+}
+
+.btn-agent-select svg,
+.btn-agent-details svg,
+.btn-agent-prompts svg {
+    flex-shrink: 0;
+}
+
+/* Модальное окно с детальной информацией */
+.details-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 1rem;
+}
+
+.details-modal-overlay.active {
+    opacity: 1;
+}
+
+.details-modal {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius);
+    max-width: 700px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.details-modal-overlay.active .details-modal {
+    transform: translateY(0);
+}
+
+.details-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.details-modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.details-modal-close {
+    background: transparent;
+    border: none;
+    font-size: 1.75rem;
+    line-height: 1;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.details-modal-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.details-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.category-description {
+    margin: 0 0 1rem 0;
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.modules-count-badge {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    background: var(--accent-color);
+    color: white;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+.modules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.module-detail {
+    padding-top: 1.25rem;
+}
+
+.module-detail-separator {
+    border-top: 1px solid var(--border-color);
+}
+
+.module-name {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.module-description {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.module-logic-section {
+    background: var(--bg-tertiary);
+    padding: 0.875rem 1rem;
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid var(--accent-color);
+}
+
+.module-logic-section strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.module-logic {
+    margin: 0;
+    padding-left: 1.25rem;
+    list-style: none;
+}
+
+.module-logic li {
+    position: relative;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 0.375rem;
+    padding-left: 0.5rem;
+}
+
+.module-logic li:before {
+    content: "•";
+    position: absolute;
+    left: -0.75rem;
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+.module-logic li:last-child {
+    margin-bottom: 0;
+}
+
+.no-logic {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .details-modal {
+        max-width: 100%;
+        max-height: 90vh;
+        margin: 0.5rem;
+    }
+
+    .details-modal-header {
+        padding: 1rem;
+    }
+
+    .details-modal-body {
+        padding: 1rem;
+    }
+
+    .agent-category-actions {
+        flex-direction: column;
+    }
+
+    .btn-agent-select,
+    .btn-agent-details,
+    .btn-agent-prompts {
+        width: 100%;
+    }
+}
+
+/* ========== Модальное окно для промптов агентов ========== */
+.prompt-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.prompt-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.prompt-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.prompt-modal-content {
+    position: relative;
+    background: var(--surface-color, #1a1a1a);
+    border-radius: 8px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.prompt-modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color, #333);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.prompt-modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary, #fff);
+}
+
+.prompt-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted, #888);
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.prompt-modal-close:hover {
+    background: var(--hover-bg, #333);
+    color: var(--text-primary, #fff);
+}
+
+.prompt-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Вкладки */
+.prompt-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color, #333);
+}
+
+.prompt-tab {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    color: var(--text-muted, #888);
+    cursor: pointer;
+    font-size: 0.95rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.prompt-tab:hover {
+    color: var(--text-primary, #fff);
+}
+
+.prompt-tab.active {
+    color: var(--accent-color, #2563eb);
+    border-bottom-color: var(--accent-color, #2563eb);
+}
+
+/* Контент вкладок */
+.prompt-tab-content {
+    display: none;
+}
+
+.prompt-tab-content.active {
+    display: block;
+}
+
+/* Статус промпта */
+.prompt-status {
+    margin-bottom: 1rem;
+}
+
+.prompt-status-custom,
+.prompt-status-default {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.prompt-status-custom {
+    background: rgba(37, 99, 235, 0.1);
+    border: 1px solid rgba(37, 99, 235, 0.3);
+    color: #60a5fa;
+}
+
+.prompt-status-default {
+    background: rgba(156, 163, 175, 0.1);
+    border: 1px solid rgba(156, 163, 175, 0.3);
+    color: #9ca3af;
+}
+
+.prompt-status-custom svg,
+.prompt-status-default svg {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+/* Информационное сообщение */
+.prompt-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba(156, 163, 175, 0.1);
+    border: 1px solid rgba(156, 163, 175, 0.3);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-muted, #888);
+    line-height: 1.5;
+}
+
+.prompt-info svg {
+    flex-shrink: 0;
+    color: #9ca3af;
+    margin-top: 0.1rem;
+}
+
+/* Текстовая область промпта */
+.prompt-textarea {
+    width: 100%;
+    min-height: 400px;
+    padding: 1rem;
+    background: var(--input-bg, #0d0d0d);
+    border: 1px solid var(--border-color, #333);
+    border-radius: 6px;
+    color: var(--text-primary, #fff);
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+
+.prompt-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color, #2563eb);
+}
+
+.prompt-textarea[readonly] {
+    background: var(--disabled-bg, #1a1a1a);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.prompt-modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color, #333);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.prompt-modal-footer .btn-primary,
+.prompt-modal-footer .btn-secondary,
+.prompt-modal-footer .btn-danger {
+    padding: 0.6rem 1.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.prompt-modal-footer .btn-primary {
+    background: var(--accent-color, #2563eb);
+    color: white;
+}
+
+.prompt-modal-footer .btn-primary:hover {
+    background: var(--accent-color-hover, #1d4ed8);
+}
+
+.prompt-modal-footer .btn-secondary {
+    background: var(--surface-light, #2a2a2a);
+    color: var(--text-primary, #fff);
+}
+
+.prompt-modal-footer .btn-secondary:hover {
+    background: var(--hover-bg, #333);
+}
+
+.prompt-modal-footer .btn-danger {
+    background: #dc2626;
+    color: white;
+}
+
+.prompt-modal-footer .btn-danger:hover {
+    background: #b91c1c;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .prompt-modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .prompt-modal-header,
+    .prompt-modal-body,
+    .prompt-modal-footer {
+        padding: 1rem;
+    }
+
+    .prompt-textarea {
+        min-height: 300px;
+        font-size: 0.85rem;
+    }
+
+    .prompt-tabs {
+        gap: 0.25rem;
+    }
+
+    .prompt-tab {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .prompt-modal-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .prompt-modal-footer .btn-primary,
+    .prompt-modal-footer .btn-secondary,
+    .prompt-modal-footer .btn-danger {
+        width: 100%;
+    }
+}

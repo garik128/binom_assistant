@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Binom Assistant</title>
+
+    <meta name="description" content="Вход в систему Binom Assistant">
+    <meta name="theme-color" content="#1a1a2e">
+
+    <link rel="icon" type="image/png" href="/static/images/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
+    <link rel="shortcut icon" href="/static/images/favicon.ico" />
+
+    <!-- Используем существующие стили проекта -->
+    <link rel="stylesheet" href="/static/css/main.css?v=5">
+    <link rel="stylesheet" href="/static/css/components.css?v=9">
+
+    <style>
+        /* Инициализация темной темы по умолчанию */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg-primary);
+        }
+
+        .login-container {
+            background: var(--card-bg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: 48px;
+            width: 100%;
+            max-width: 420px;
+            margin: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px;
+        }
+
+        .login-title {
+            color: var(--accent-primary);
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+
+        .login-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 15px;
+            padding: 12px 16px;
+            transition: all var(--transition-fast);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .login-button {
+            background: var(--accent-primary);
+            border: none;
+            border-radius: 8px;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 14px;
+            transition: all var(--transition-fast);
+            margin-top: 8px;
+        }
+
+        .login-button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .login-button:active {
+            transform: translateY(0);
+        }
+
+        .login-button:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.6;
+        }
+
+        .error-message {
+            background: rgba(217, 74, 74, 0.1);
+            border: 1px solid var(--accent-danger);
+            border-radius: 8px;
+            color: var(--accent-danger);
+            font-size: 14px;
+            padding: 12px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .loading-spinner {
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--accent-primary);
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .button-content {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Адаптив */
+        @media (max-width: 768px) {
+            .login-container {
+                padding: 32px 24px;
+                margin: 16px;
+            }
+
+            .login-title {
+                font-size: 24px;
+            }
+        }
+    </style>
+
+    <!-- Инициализация темы до загрузки страницы -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme-init');
+            }
+        })();
+    </script>
+</head>
+<body class="dark-theme">
+    <script>
+        // Применяем тему сразу после загрузки body
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+            }
+        })();
+    </script>
+    <div class="login-container">
+        <div class="login-header">
+            <img src="/static/images/logo.png" alt="Binom Assistant" class="login-logo">
+            <h1 class="login-title">Binom Assistant</h1>
+            <p class="login-subtitle">Войдите для продолжения</p>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <form id="loginForm" class="login-form">
+            <div class="form-group">
+                <label for="username" class="form-label">Логин</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    class="form-input"
+                    placeholder="Введите логин"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Пароль</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    class="form-input"
+                    placeholder="Введите пароль"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="login-button" id="loginButton">
+                <span class="button-content">
+                    <span id="buttonText">Войти</span>
+                </span>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const loginButton = document.getElementById('loginButton');
+        const buttonText = document.getElementById('buttonText');
+        const errorMessage = document.getElementById('errorMessage');
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        function setLoading(loading) {
+            if (loading) {
+                loginButton.disabled = true;
+                buttonText.innerHTML = '<span class="loading-spinner"></span>Вход...';
+            } else {
+                loginButton.disabled = false;
+                buttonText.textContent = 'Войти';
+            }
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            setLoading(true);
+
+            try {
+                const response = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Сохраняем токен в localStorage
+                    localStorage.setItem('access_token', data.access_token);
+
+                    // Редирект на главную
+                    window.location.href = '/';
+                } else {
+                    showError(data.detail || 'Неверный логин или пароль');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Ошибка соединения с сервером');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // Проверка: если уже авторизован, редирект на главную
+        const existingToken = localStorage.getItem('access_token');
+        if (existingToken) {
+            window.location.href = '/';
+        }
+
+        // Автофокус на поле логина
+        document.getElementById('username').focus();
+    </script>
+</body>
+</html>

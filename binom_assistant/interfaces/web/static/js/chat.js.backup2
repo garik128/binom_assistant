@@ -1,0 +1,1481 @@
+/**
+ * JavaScript для AI чата
+ */
+
+// Состояние чата
+const chatState = {
+    currentChatId: null,  // ID текущего чата из БД
+    messages: [],
+    chats: [],  // Список всех чатов
+    isTyping: false,
+    templates: [],
+    editingTemplateId: null,
+    allModels: [],
+    favoriteModels: [],
+    currentModel: 'openai/gpt-4o-mini'
+};
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    initChat();
+});
+
+
+// ========== Функции для работы с БД чатами ==========
+
+// Загрузка списка чатов
+async function loadChats() {
+    try {
+        const response = await fetch('/api/v1/chat/list');
+        if (!response.ok) throw new Error('Failed to load chats');
+
+        const data = await response.json();
+        chatState.chats = data.chats || [];
+
+        // Если нет текущего чата - создаем новый
+        if (!chatState.currentChatId && chatState.chats.length === 0) {
+            await createNewChat();
+        } else if (!chatState.currentChatId && chatState.chats.length > 0) {
+            // Загружаем последний чат
+            await switchToChat(chatState.chats[0].id);
+        }
+
+        renderChatsList();
+    } catch (error) {
+        console.error('Error loading chats:', error);
+    }
+}
+
+// Отображение списка чатов
+function renderChatsList() {
+    const chatsList = document.getElementById('chatsList');
+    if (!chatsList) return;
+
+    chatsList.innerHTML = '';
+
+    chatState.chats.forEach(chat => {
+        const chatItem = document.createElement('div');
+        chatItem.className = `chat-item${chat.id === chatState.currentChatId ? ' active' : ''}`;
+        chatItem.dataset.chatId = chat.id;
+
+        chatItem.innerHTML = `
+            <div class="chat-item-content" onclick="switchToChat(${chat.id})">
+                <div class="chat-item-title">${escapeHtml(chat.title)}</div>
+                <div class="chat-item-meta">${formatChatDate(chat.updated_at)} | ${chat.message_count} сообщ.</div>
+            </div>
+            <button class="chat-item-delete" onclick="deleteChat(${chat.id}, event)" title="Удалить чат">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+            </button>
+        `;
+
+        chatsList.appendChild(chatItem);
+    });
+}
+
+// Создание нового чата
+async function createNewChat() {
+    try {
+        const response = await fetch('/api/v1/chat/new', {
+            method: 'POST'
+        });
+
+        if (!response.ok) throw new Error('Failed to create chat');
+
+        const newChat = await response.json();
+        chatState.chats.unshift(newChat);
+
+        // Переключаемся на новый чат
+        await switchToChat(newChat.id);
+        renderChatsList();
+
+        // Фокус на поле ввода
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) messageInput.focus();
+
+    } catch (error) {
+        console.error('Error creating chat:', error);
+        alert('Ошибка при создании чата');
+    }
+}
+
+// Переключение на другой чат
+async function switchToChat(chatId) {
+    try {
+        const response = await fetch(`/api/v1/chat/${chatId}`);
+        if (!response.ok) throw new Error('Failed to load chat');
+
+        const chatData = await response.json();
+        chatState.currentChatId = chatId;
+        chatState.messages = chatData.messages || [];
+
+        // Очищаем область сообщений
+        const chatMessages = document.getElementById('chatMessages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '';
+
+            // Отображаем сообщения из БД
+            chatState.messages.forEach(msg => {
+                addMessage(msg.role === 'user' ? 'user' : 'ai', msg.content, false);
+            });
+        }
+
+        // Обновляем активный чат в списке
+        renderChatsList();
+
+    } catch (error) {
+        console.error('Error switching chat:', error);
+        alert('Ошибка при загрузке чата');
+    }
+}
+
+// Удаление чата
+async function deleteChat(chatId, event) {
+    if (event) event.stopPropagation();
+
+    if (!confirm('Удалить этот чат?')) return;
+
+    try {
+        const response = await fetch(`/api/v1/chat/${chatId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete chat');
+
+        // Удаляем из списка
+        chatState.chats = chatState.chats.filter(c => c.id !== chatId);
+
+        // Если удалили текущий чат
+        if (chatState.currentChatId === chatId) {
+            if (chatState.chats.length > 0) {
+                await switchToChat(chatState.chats[0].id);
+            } else {
+                await createNewChat();
+            }
+        }
+
+        renderChatsList();
+
+    } catch (error) {
+        console.error('Error deleting chat:', error);
+        alert('Ошибка при удалении чата');
+    }
+}
+
+// Сохранение сообщений в БД
+async function saveMessagesToDB(messages) {
+    if (!chatState.currentChatId) return;
+
+    try {
+        const response = await fetch(`/api/v1/chat/${chatState.currentChatId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(messages)
+        });
+
+        if (!response.ok) throw new Error('Failed to save messages');
+
+        // Перезагружаем список чатов для обновления счетчиков
+        await loadChats();
+
+    } catch (error) {
+        console.error('Error saving messages:', error);
+    }
+}
+
+// Редактирование title чата
+async function editChatTitle(chatId) {
+    const chat = chatState.chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    const newTitle = prompt('Введите новое название чата:', chat.title);
+    if (!newTitle || newTitle === chat.title) return;
+
+    try {
+        const response = await fetch(`/api/v1/chat/${chatId}/title?title=${encodeURIComponent(newTitle)}`, {
+            method: 'PUT'
+        });
+
+        if (!response.ok) throw new Error('Failed to update title');
+
+        const updated = await response.json();
+        const chatIndex = chatState.chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) {
+            chatState.chats[chatIndex] = updated;
+        }
+
+        renderChatsList();
+
+    } catch (error) {
+        console.error('Error updating chat title:', error);
+        alert('Ошибка при обновлении названия');
+    }
+}
+
+// Вспомогательные функции
+function formatChatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (days === 0) return 'Сегодня';
+    if (days === 1) return 'Вчера';
+    if (days < 7) return `${days} дн. назад`;
+
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+function initChat() {
+    // Сворачивание/разворачивание сайдбара
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
+    const chatSidebar = document.getElementById('chatSidebar');
+
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            chatSidebar.classList.toggle('collapsed');
+        });
+    }
+
+    if (sidebarToggleMobile) {
+        sidebarToggleMobile.addEventListener('click', () => {
+            chatSidebar.classList.toggle('collapsed');
+        });
+    }
+
+    // Закрытие сайдбара при клике вне его на мобильных
+    if (window.innerWidth <= 768) {
+        document.addEventListener('click', (e) => {
+            if (!chatSidebar.contains(e.target) &&
+                !sidebarToggleMobile.contains(e.target) &&
+                !chatSidebar.classList.contains('collapsed')) {
+                chatSidebar.classList.add('collapsed');
+            }
+        });
+    }
+
+    // Отправка сообщений
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    if (sendBtn) {
+        sendBtn.addEventListener('click', () => {
+            sendMessage();
+        });
+    }
+
+    if (chatInput) {
+        // Автоматическое изменение высоты textarea
+        chatInput.addEventListener('input', () => {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 200) + 'px';
+        });
+
+        // Отправка по Enter (без Shift)
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+
+    // Новый чат
+    const newChatBtn = document.getElementById('newChatBtn');
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', () => {
+            startNewChat();
+        });
+    }
+
+    // Примеры промптов
+    const examplePrompts = document.querySelectorAll('.example-prompt');
+    examplePrompts.forEach(prompt => {
+        prompt.addEventListener('click', () => {
+            const promptText = prompt.getAttribute('data-prompt');
+            chatInput.value = promptText;
+            sendMessage();
+        });
+    });
+
+    // Переключение между чатами
+    const chatItems = document.querySelectorAll('.chat-item');
+    chatItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            // Игнорируем клики на кнопке удаления
+            if (e.target.closest('.chat-item-delete')) {
+                return;
+            }
+
+            const chatId = item.getAttribute('data-chat-id');
+            switchChat(chatId);
+        });
+    });
+
+    // Удаление чатов
+    const deleteButtons = document.querySelectorAll('.chat-item-delete');
+    deleteButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const chatItem = btn.closest('.chat-item');
+            const chatId = chatItem.getAttribute('data-chat-id');
+            deleteChat(chatId);
+        });
+    });
+
+    // Поиск по чатам
+    const chatSearchInput = document.getElementById('chatSearchInput');
+    if (chatSearchInput) {
+        chatSearchInput.addEventListener('input', (e) => {
+            searchChats(e.target.value);
+        });
+    }
+
+    // Копирование сообщений
+    setupMessageActions();
+
+    // Инициализация шаблонов
+    initTemplates();
+
+    // Инициализация выбора моделей
+    initModelSelector();
+}
+
+// Отправка сообщения
+async function sendMessage() {
+    const chatInput = document.getElementById('chatInput');
+    const message = chatInput.value.trim();
+
+    if (!message || chatState.isTyping) {
+        return;
+    }
+
+    // Добавляем сообщение пользователя
+    addMessage('user', message);
+
+    // Очищаем поле ввода
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+
+    // Скрываем приветственное сообщение
+    const welcomeMessage = document.querySelector('.welcome-message');
+    if (welcomeMessage) {
+        welcomeMessage.style.display = 'none';
+    }
+
+    // Показываем индикатор печатания
+    showTypingIndicator();
+
+    try {
+        // Получаем выбранную модель и настройки
+        const modelSelect = document.getElementById('modelSelect');
+        const contextLimit = document.getElementById('contextLimit');
+        const selectedModel = modelSelect ? modelSelect.value : 'openai/gpt-4o-mini';
+        const contextMessages = contextLimit ? parseInt(contextLimit.value) : 10;
+
+        // Формируем историю сообщений для отправки
+        const chatHistory = chatState.messages
+            .slice(0, -1) // Исключаем последнее (только что добавленное) сообщение
+            .map(msg => ({
+                role: msg.sender === 'user' ? 'user' : 'assistant',
+                content: msg.text
+            }));
+
+        // Отправляем запрос к API
+        const response = await fetch('/api/v1/chat/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                chat_history: chatHistory,
+                model: selectedModel,
+                context_limit: contextMessages
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Скрываем индикатор
+        hideTypingIndicator();
+
+        // Добавляем ответ AI
+        addMessage('ai', data.response);
+
+        // Обновляем информацию о токенах
+        updateTokenInfo(data.usage);
+
+    } catch (error) {
+        console.error('Ошибка при отправке сообщения:', error);
+        hideTypingIndicator();
+        addMessage('ai', 'Извините, произошла ошибка при получении ответа. Пожалуйста, попробуйте еще раз.');
+    }
+}
+
+// Добавление сообщения в чат
+function addMessage(sender, text, saveToDB = true) {
+    const chatMessages = document.getElementById('chatMessages');
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}-message`;
+
+    // Аватар
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'message-avatar';
+
+    if (sender === 'user') {
+        avatarDiv.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+        `;
+    } else {
+        avatarDiv.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+        `;
+    }
+
+    // Контент сообщения
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'message-text';
+    textDiv.innerHTML = formatMessageText(text);
+
+    contentDiv.appendChild(textDiv);
+
+    // Действия для AI сообщений
+    if (sender === 'ai') {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'message-actions';
+        actionsDiv.innerHTML = `
+            <button class="message-action-btn" onclick="copyMessage(this)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                </svg>
+                Копировать
+            </button>
+        `;
+        contentDiv.appendChild(actionsDiv);
+    }
+
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+
+    chatMessages.appendChild(messageDiv);
+
+    // Прокрутка вниз
+    scrollToBottom();
+
+    // Сохраняем сообщение в состояние
+    chatState.messages.push({
+        sender,
+        text,
+        timestamp: new Date()
+    });
+}
+
+// Форматирование текста сообщения с поддержкой полного markdown
+function formatMessageText(text) {
+    // Настройка marked для подсветки кода
+    marked.setOptions({
+        highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+                try {
+                    return hljs.highlight(code, { language: lang }).value;
+                } catch (err) {
+                    console.error('Highlight error:', err);
+                }
+            }
+            return hljs.highlightAuto(code).value;
+        },
+        breaks: true,
+        gfm: true
+    });
+
+    // Парсим markdown
+    return marked.parse(text);
+}
+
+// Показ индикатора печатания
+function showTypingIndicator() {
+    const chatMessages = document.getElementById('chatMessages');
+
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message ai-message';
+    typingDiv.id = 'typingIndicator';
+
+    typingDiv.innerHTML = `
+        <div class="message-avatar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+        </div>
+        <div class="message-content">
+            <div class="typing-indicator">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            </div>
+        </div>
+    `;
+
+    chatMessages.appendChild(typingDiv);
+    chatState.isTyping = true;
+    scrollToBottom();
+}
+
+// Скрытие индикатора печатания
+function hideTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+    chatState.isTyping = false;
+}
+
+// Прокрутка вниз
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Обновление информации о токенах
+function updateTokenInfo(usage) {
+    const tokenInfo = document.getElementById('tokenInfo');
+    const tokenCount = document.getElementById('tokenCount');
+
+    if (tokenInfo && tokenCount && usage) {
+        tokenCount.textContent = usage.total_tokens || 0;
+        tokenInfo.style.display = 'flex';
+        tokenInfo.title = `Prompt: ${usage.prompt_tokens || 0} | Completion: ${usage.completion_tokens || 0} | Total: ${usage.total_tokens || 0}`;
+    }
+}
+
+// Новый чат
+function startNewChat() {
+    const chatMessages = document.getElementById('chatMessages');
+
+    // Очищаем сообщения
+    chatMessages.innerHTML = `
+        <div class="welcome-message">
+            <div class="welcome-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                </svg>
+            </div>
+            <h2>Добро пожаловать в AI Ассистент</h2>
+            <p>Задайте вопрос или опишите задачу. Я помогу вам с анализом данных, настройкой системы и многим другим.</p>
+
+            <div class="example-prompts">
+                <button class="example-prompt" data-prompt="Проанализируй последние кампании за неделю">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                    Проанализируй последние кампании
+                </button>
+                <button class="example-prompt" data-prompt="Какие модули аналитики доступны?">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 16v-4M12 8h.01"/>
+                    </svg>
+                    Какие модули аналитики доступны?
+                </button>
+                <button class="example-prompt" data-prompt="Помоги настроить алерты">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <path d="M12 9v4M12 17h.01"/>
+                    </svg>
+                    Помоги настроить алерты
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Переинициализируем обработчики примеров
+    const examplePrompts = document.querySelectorAll('.example-prompt');
+    examplePrompts.forEach(prompt => {
+        prompt.addEventListener('click', () => {
+            const promptText = prompt.getAttribute('data-prompt');
+            document.getElementById('chatInput').value = promptText;
+            sendMessage();
+        });
+    });
+
+    // Сбрасываем состояние
+    chatState.messages = [];
+    chatState.currentChatId = 'new-' + Date.now();
+}
+
+// Переключение чата
+function switchChat(chatId) {
+    // Убираем активный класс со всех чатов
+    document.querySelectorAll('.chat-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    // Добавляем активный класс к выбранному чату
+    const selectedChat = document.querySelector(`[data-chat-id="${chatId}"]`);
+    if (selectedChat) {
+        selectedChat.classList.add('active');
+    }
+
+    chatState.currentChatId = chatId;
+
+    // Здесь можно загрузить историю чата
+    // loadChatHistory(chatId);
+}
+
+// Удаление чата
+function deleteChat(chatId) {
+    if (confirm('Вы уверены, что хотите удалить этот чат?')) {
+        const chatItem = document.querySelector(`[data-chat-id="${chatId}"]`);
+        if (chatItem) {
+            chatItem.remove();
+        }
+
+        // Если удаляем активный чат, переключаемся на дефолтный
+        if (chatState.currentChatId === chatId) {
+            switchChat('default');
+        }
+    }
+}
+
+// Поиск по чатам
+function searchChats(query) {
+    const chatItems = document.querySelectorAll('.chat-item');
+    const lowerQuery = query.toLowerCase();
+
+    chatItems.forEach(item => {
+        const title = item.querySelector('.chat-item-title').textContent.toLowerCase();
+        const preview = item.querySelector('.chat-item-preview').textContent.toLowerCase();
+
+        if (title.includes(lowerQuery) || preview.includes(lowerQuery)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Копирование сообщения
+function copyMessage(button) {
+    const messageText = button.closest('.message-content').querySelector('.message-text');
+    const text = messageText.textContent;
+
+    navigator.clipboard.writeText(text).then(() => {
+        // Показываем уведомление
+        const originalText = button.innerHTML;
+        button.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            Скопировано
+        `;
+
+        setTimeout(() => {
+            button.innerHTML = originalText;
+        }, 2000);
+    }).catch(err => {
+        console.error('Ошибка копирования:', err);
+    });
+}
+
+// Настройка действий с сообщениями
+function setupMessageActions() {
+    // Обработчики уже добавлены через onclick в HTML
+}
+
+// ============================================
+// УПРАВЛЕНИЕ ШАБЛОНАМИ
+// ============================================
+
+// Инициализация шаблонов
+function initTemplates() {
+    // Загружаем шаблоны из LocalStorage
+    loadTemplates();
+
+    // Рендерим шаблоны
+    renderTemplates();
+
+    // Кнопка добавления шаблона
+    const addTemplateBtn = document.getElementById('addTemplateBtn');
+    if (addTemplateBtn) {
+        addTemplateBtn.addEventListener('click', () => {
+            openTemplateModal();
+        });
+    }
+
+    // Кнопки модального окна
+    const templateModal = document.getElementById('templateModal');
+    const closeModalBtn = document.getElementById('closeTemplateModal');
+    const cancelModalBtn = document.getElementById('cancelTemplateModal');
+    const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeTemplateModal);
+    }
+
+    if (cancelModalBtn) {
+        cancelModalBtn.addEventListener('click', closeTemplateModal);
+    }
+
+    if (saveTemplateBtn) {
+        saveTemplateBtn.addEventListener('click', saveTemplate);
+    }
+
+    // Закрытие модального окна при клике вне его
+    if (templateModal) {
+        templateModal.addEventListener('click', (e) => {
+            if (e.target === templateModal) {
+                closeTemplateModal();
+            }
+        });
+    }
+
+    // Выбор иконки
+    const iconOptions = document.querySelectorAll('.icon-option');
+    iconOptions.forEach(icon => {
+        icon.addEventListener('click', () => {
+            selectTemplateIcon(icon);
+        });
+    });
+}
+
+// Загрузка шаблонов из LocalStorage
+function loadTemplates() {
+    const stored = localStorage.getItem('chatTemplates');
+    if (stored) {
+        try {
+            chatState.templates = JSON.parse(stored);
+        } catch (e) {
+            console.error('Ошибка загрузки шаблонов:', e);
+            chatState.templates = getDefaultTemplates();
+        }
+    } else {
+        chatState.templates = getDefaultTemplates();
+    }
+}
+
+// Сохранение шаблонов в LocalStorage
+function saveTemplates() {
+    localStorage.setItem('chatTemplates', JSON.stringify(chatState.templates));
+}
+
+// Дефолтные шаблоны
+function getDefaultTemplates() {
+    return [
+        {
+            id: 'analysis',
+            title: 'Анализ кампаний',
+            prompt: 'Проанализируй последние кампании за неделю. Покажи топ-5 по прибыльности и топ-5 проблемных.',
+            icon: 'chart'
+        },
+        {
+            id: 'modules',
+            title: 'Проверка модулей',
+            prompt: 'Покажи статус всех аналитических модулей и выдели те, которые требуют внимания.',
+            icon: 'grid'
+        },
+        {
+            id: 'alerts',
+            title: 'Сводка алертов',
+            prompt: 'Дай сводку по активным алертам за последние 24 часа. Сгруппируй по уровню важности.',
+            icon: 'alert'
+        }
+    ];
+}
+
+// Рендеринг списка шаблонов
+function renderTemplates() {
+    const templatesList = document.getElementById('templatesList');
+    if (!templatesList) return;
+
+    // Очищаем список
+    templatesList.innerHTML = '';
+
+    // Добавляем каждый шаблон
+    chatState.templates.forEach(template => {
+        const templateItem = createTemplateElement(template);
+        templatesList.appendChild(templateItem);
+    });
+
+    // Если нет шаблонов, показываем сообщение
+    if (chatState.templates.length === 0) {
+        templatesList.innerHTML = '<div class="empty-state">Нет сохраненных шаблонов</div>';
+    }
+}
+
+// Создание элемента шаблона
+function createTemplateElement(template) {
+    const item = document.createElement('div');
+    item.className = 'template-item';
+    item.setAttribute('data-template-id', template.id);
+
+    // Иконка
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'template-icon';
+    iconDiv.innerHTML = getTemplateIconSVG(template.icon);
+
+    // Контент
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'template-content';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'template-title';
+    titleDiv.textContent = template.title;
+
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'template-preview';
+    previewDiv.textContent = template.prompt.length > 60
+        ? template.prompt.substring(0, 60) + '...'
+        : template.prompt;
+
+    contentDiv.appendChild(titleDiv);
+    contentDiv.appendChild(previewDiv);
+
+    // Кнопка удаления
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'template-delete';
+    deleteBtn.title = 'Удалить';
+    deleteBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+    `;
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteTemplate(template.id);
+    });
+
+    // Клик по шаблону - использовать его
+    item.addEventListener('click', () => {
+        useTemplate(template.id);
+    });
+
+    item.appendChild(iconDiv);
+    item.appendChild(contentDiv);
+    item.appendChild(deleteBtn);
+
+    return item;
+}
+
+// Получение SVG иконки по типу
+function getTemplateIconSVG(iconType) {
+    const icons = {
+        chart: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>',
+        grid: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>',
+        alert: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+        file: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>',
+        search: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>',
+        settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'
+    };
+
+    return icons[iconType] || icons['file'];
+}
+
+// Открытие модального окна
+function openTemplateModal(templateId = null) {
+    const modal = document.getElementById('templateModal');
+    const modalTitle = document.getElementById('templateModalTitle');
+    const templateNameInput = document.getElementById('templateName');
+    const templatePromptInput = document.getElementById('templatePrompt');
+
+    if (!modal) return;
+
+    // Если редактируем существующий шаблон
+    if (templateId) {
+        const template = chatState.templates.find(t => t.id === templateId);
+        if (template) {
+            chatState.editingTemplateId = templateId;
+            modalTitle.textContent = 'Редактировать шаблон';
+            templateNameInput.value = template.title;
+            templatePromptInput.value = template.prompt;
+
+            // Выбираем иконку
+            const iconOption = document.querySelector(`[data-icon="${template.icon}"]`);
+            if (iconOption) {
+                selectTemplateIcon(iconOption);
+            }
+        }
+    } else {
+        // Новый шаблон
+        chatState.editingTemplateId = null;
+        modalTitle.textContent = 'Новый шаблон';
+        templateNameInput.value = '';
+        templatePromptInput.value = '';
+
+        // Выбираем первую иконку по умолчанию
+        const firstIcon = document.querySelector('.icon-option');
+        if (firstIcon) {
+            selectTemplateIcon(firstIcon);
+        }
+    }
+
+    modal.style.display = 'flex';
+}
+
+// Закрытие модального окна
+function closeTemplateModal() {
+    const modal = document.getElementById('templateModal');
+    if (modal) {
+        modal.style.display = 'none';
+        chatState.editingTemplateId = null;
+    }
+}
+
+// Выбор иконки
+function selectTemplateIcon(iconElement) {
+    // Убираем выбор со всех иконок
+    document.querySelectorAll('.icon-option').forEach(icon => {
+        icon.classList.remove('selected');
+    });
+
+    // Выбираем текущую
+    iconElement.classList.add('selected');
+}
+
+// Сохранение шаблона
+function saveTemplate() {
+    const templateNameInput = document.getElementById('templateName');
+    const templatePromptInput = document.getElementById('templatePrompt');
+    const selectedIcon = document.querySelector('.icon-option.selected');
+
+    const name = templateNameInput.value.trim();
+    const prompt = templatePromptInput.value.trim();
+    const icon = selectedIcon ? selectedIcon.getAttribute('data-icon') : 'file';
+
+    // Валидация
+    if (!name) {
+        alert('Пожалуйста, введите название шаблона');
+        templateNameInput.focus();
+        return;
+    }
+
+    if (!prompt) {
+        alert('Пожалуйста, введите текст промпта');
+        templatePromptInput.focus();
+        return;
+    }
+
+    // Сохраняем или обновляем
+    if (chatState.editingTemplateId) {
+        // Обновляем существующий
+        const index = chatState.templates.findIndex(t => t.id === chatState.editingTemplateId);
+        if (index !== -1) {
+            chatState.templates[index] = {
+                ...chatState.templates[index],
+                title: name,
+                prompt: prompt,
+                icon: icon
+            };
+        }
+    } else {
+        // Создаем новый
+        const newTemplate = {
+            id: 'template-' + Date.now(),
+            title: name,
+            prompt: prompt,
+            icon: icon
+        };
+        chatState.templates.push(newTemplate);
+    }
+
+    // Сохраняем в LocalStorage
+    saveTemplates();
+
+    // Перерисовываем список
+    renderTemplates();
+
+    // Закрываем модальное окно
+    closeTemplateModal();
+}
+
+// Удаление шаблона
+function deleteTemplate(templateId) {
+    if (!confirm('Вы уверены, что хотите удалить этот шаблон?')) {
+        return;
+    }
+
+    // Удаляем из массива
+    chatState.templates = chatState.templates.filter(t => t.id !== templateId);
+
+    // Сохраняем в LocalStorage
+    saveTemplates();
+
+    // Перерисовываем список
+    renderTemplates();
+}
+
+// Использование шаблона
+function useTemplate(templateId) {
+    const template = chatState.templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    // Вставляем промпт в поле ввода
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+        chatInput.value = template.prompt;
+        chatInput.focus();
+
+        // Автоматически подстраиваем высоту
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 200) + 'px';
+    }
+
+    // На мобильных закрываем сайдбар
+    if (window.innerWidth <= 768) {
+        const chatSidebar = document.getElementById('chatSidebar');
+        if (chatSidebar) {
+            chatSidebar.classList.add('collapsed');
+        }
+    }
+}
+
+// ============================================
+// УПРАВЛЕНИЕ ВЫБОРОМ МОДЕЛЕЙ
+// ============================================
+
+// Топовые провайдеры с поддержкой tools
+const TOP_PROVIDERS = ['openai', 'anthropic', 'google', 'x-ai', 'deepseek'];
+
+// Инициализация выбора моделей
+function initModelSelector() {
+    // Загружаем избранные модели из localStorage
+    loadFavoriteModels();
+
+    // Рендерим селект
+    renderModelSelect();
+
+    // Кнопка открытия модального окна
+    const selectModelBtn = document.getElementById('selectModelBtn');
+    if (selectModelBtn) {
+        selectModelBtn.addEventListener('click', openModelModal);
+    }
+
+    // Кнопки закрытия модального окна
+    const closeModelModal = document.getElementById('closeModelModal');
+    const closeModelModalBtn = document.getElementById('closeModelModalBtn');
+
+    if (closeModelModal) {
+        closeModelModal.addEventListener('click', closeModelModalFunc);
+    }
+
+    if (closeModelModalBtn) {
+        closeModelModalBtn.addEventListener('click', closeModelModalFunc);
+    }
+
+    // Закрытие по клику на overlay
+    const modelModal = document.getElementById('modelModal');
+    if (modelModal) {
+        modelModal.addEventListener('click', (e) => {
+            if (e.target.classList.contains('model-modal-overlay') || e.target === modelModal) {
+                closeModelModalFunc();
+            }
+        });
+    }
+
+    // Поиск моделей
+    const modelSearchInput = document.getElementById('modelSearchInput');
+    if (modelSearchInput) {
+        modelSearchInput.addEventListener('input', (e) => {
+            searchModels(e.target.value);
+        });
+    }
+
+    // Обработчик изменения селекта
+    const modelSelect = document.getElementById('modelSelect');
+    if (modelSelect) {
+        modelSelect.addEventListener('change', (e) => {
+            chatState.currentModel = e.target.value;
+            localStorage.setItem('selectedModel', e.target.value);
+            updateModelPrice();
+        });
+    }
+
+    // Обновляем цену при инициализации
+    updateModelPrice();
+}
+
+// Загрузка избранных моделей из localStorage
+function loadFavoriteModels() {
+    const stored = localStorage.getItem('favoriteModels');
+    const selectedModel = localStorage.getItem('selectedModel');
+
+    if (stored) {
+        try {
+            chatState.favoriteModels = JSON.parse(stored);
+        } catch (e) {
+            console.error('Ошибка загрузки избранных моделей:', e);
+            chatState.favoriteModels = getDefaultFavoriteModels();
+        }
+    } else {
+        chatState.favoriteModels = getDefaultFavoriteModels();
+    }
+
+    // Восстанавливаем выбранную модель
+    if (selectedModel && chatState.favoriteModels.find(m => m.id === selectedModel)) {
+        chatState.currentModel = selectedModel;
+    }
+}
+
+// Сохранение избранных моделей в localStorage
+function saveFavoriteModels() {
+    localStorage.setItem('favoriteModels', JSON.stringify(chatState.favoriteModels));
+}
+
+// Дефолтные избранные модели
+function getDefaultFavoriteModels() {
+    return [
+        {
+            id: 'openai/gpt-4o-mini',
+            name: 'GPT-4o Mini',
+            description: 'Fast and affordable model',
+            provider: 'OpenAI'
+        },
+        {
+            id: 'anthropic/claude-3.5-sonnet',
+            name: 'Claude 3.5 Sonnet',
+            description: 'Most intelligent Claude model',
+            provider: 'Anthropic'
+        },
+        {
+            id: 'google/gemini-pro-1.5',
+            name: 'Gemini Pro 1.5',
+            description: 'Google advanced model',
+            provider: 'Google'
+        }
+    ];
+}
+
+// Обновление отображения цены текущей модели в шапке
+function updateModelPrice() {
+    const modelPriceInfo = document.getElementById('modelPriceInfo');
+    const modelPrice = document.getElementById('modelPrice');
+
+    if (!modelPriceInfo || !modelPrice) return;
+
+    // Находим текущую модель
+    const currentModel = chatState.allModels.find(m => m.id === chatState.currentModel);
+
+    if (currentModel && currentModel.pricing) {
+        const priceText = formatModelPrice(currentModel.pricing);
+        modelPrice.textContent = priceText;
+        modelPriceInfo.style.display = 'flex';
+    } else {
+        modelPriceInfo.style.display = 'none';
+    }
+}
+
+// Рендеринг основного селекта
+function renderModelSelect() {
+    const modelSelect = document.getElementById('modelSelect');
+    if (!modelSelect) return;
+
+    // Очищаем
+    modelSelect.innerHTML = '';
+
+    // Добавляем избранные модели
+    chatState.favoriteModels.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = model.name;
+        if (model.id === chatState.currentModel) {
+            option.selected = true;
+        }
+        modelSelect.appendChild(option);
+    });
+
+    // Если нет избранных, добавляем дефолтную
+    if (chatState.favoriteModels.length === 0) {
+        const option = document.createElement('option');
+        option.value = 'openai/gpt-4o-mini';
+        option.textContent = 'GPT-4o Mini';
+        option.selected = true;
+        modelSelect.appendChild(option);
+    }
+}
+
+// Открытие модального окна выбора моделей
+async function openModelModal() {
+    const modal = document.getElementById('modelModal');
+    if (!modal) return;
+
+    modal.classList.add('active');
+
+    // Загружаем модели если еще не загружены
+    if (chatState.allModels.length === 0) {
+        await loadAllModels();
+    } else {
+        renderModelList(chatState.allModels);
+    }
+}
+
+// Закрытие модального окна
+function closeModelModalFunc() {
+    const modal = document.getElementById('modelModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+
+    // Очищаем поиск
+    const searchInput = document.getElementById('modelSearchInput');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+}
+
+// Загрузка всех моделей от API
+async function loadAllModels() {
+    const loading = document.getElementById('modelListLoading');
+    const modelList = document.getElementById('modelList');
+
+    try {
+        loading.style.display = 'flex';
+        modelList.style.display = 'none';
+
+        const response = await fetch('/api/v1/chat/models');
+        if (!response.ok) {
+            throw new Error('Failed to load models');
+        }
+
+        const data = await response.json();
+
+        // Фильтруем только топовые модели
+        chatState.allModels = filterTopModels(data.models);
+
+        loading.style.display = 'none';
+        modelList.style.display = 'block';
+
+        renderModelList(chatState.allModels);
+
+        // Обновляем цену текущей модели после загрузки
+        updateModelPrice();
+
+    } catch (error) {
+        console.error('Ошибка загрузки моделей:', error);
+        loading.innerHTML = '<p style="color: var(--text-error);">Ошибка загрузки моделей</p>';
+    }
+}
+
+// Фильтрация топовых моделей
+function filterTopModels(models) {
+    return models.filter(model => {
+        const modelId = model.id.toLowerCase();
+        return TOP_PROVIDERS.some(provider => modelId.startsWith(provider));
+    }).sort((a, b) => {
+        // Сортируем по провайдеру, потом по имени
+        const providerA = a.id.split('/')[0];
+        const providerB = b.id.split('/')[0];
+        if (providerA !== providerB) {
+            return providerA.localeCompare(providerB);
+        }
+        return a.name.localeCompare(b.name);
+    });
+}
+
+// Рендеринг списка моделей
+function renderModelList(models) {
+    const modelList = document.getElementById('modelList');
+    if (!modelList) return;
+
+    modelList.innerHTML = '';
+
+    if (models.length === 0) {
+        modelList.innerHTML = '<p class="no-models">Модели не найдены</p>';
+        return;
+    }
+
+    // Разделяем на избранные и остальные
+    const favoriteIds = chatState.favoriteModels.map(m => m.id);
+    const favoriteModels = models.filter(m => favoriteIds.includes(m.id));
+    const otherModels = models.filter(m => !favoriteIds.includes(m.id));
+
+    // Сначала показываем избранные, если они есть
+    if (favoriteModels.length > 0) {
+        const favoritesGroup = document.createElement('div');
+        favoritesGroup.className = 'model-provider-group';
+
+        const favoritesHeader = document.createElement('div');
+        favoritesHeader.className = 'model-provider-header';
+        favoritesHeader.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.003-.003.001a.752.752 0 01-.704 0l-.003-.001z"/>
+            </svg>
+            Избранные
+        `;
+        favoritesHeader.style.borderLeftColor = '#ffc107';
+        favoritesGroup.appendChild(favoritesHeader);
+
+        favoriteModels.forEach(model => {
+            const modelItem = createModelItem(model);
+            favoritesGroup.appendChild(modelItem);
+        });
+
+        modelList.appendChild(favoritesGroup);
+    }
+
+    // Группируем остальные по провайдеру
+    const groupedModels = {};
+    otherModels.forEach(model => {
+        const provider = model.id.split('/')[0];
+        const providerName = getProviderDisplayName(provider);
+
+        if (!groupedModels[providerName]) {
+            groupedModels[providerName] = [];
+        }
+        groupedModels[providerName].push(model);
+    });
+
+    // Рендерим группы провайдеров
+    Object.keys(groupedModels).sort().forEach(providerName => {
+        const providerGroup = document.createElement('div');
+        providerGroup.className = 'model-provider-group';
+
+        const providerHeader = document.createElement('div');
+        providerHeader.className = 'model-provider-header';
+        providerHeader.textContent = providerName;
+        providerGroup.appendChild(providerHeader);
+
+        groupedModels[providerName].forEach(model => {
+            const modelItem = createModelItem(model);
+            providerGroup.appendChild(modelItem);
+        });
+
+        modelList.appendChild(providerGroup);
+    });
+}
+
+// Форматирование цены модели
+function formatModelPrice(pricing) {
+    if (!pricing || (!pricing.prompt && !pricing.completion)) {
+        return 'Free';
+    }
+
+    const promptPrice = parseFloat(pricing.prompt || 0) * 1000000;
+    const completionPrice = parseFloat(pricing.completion || 0) * 1000000;
+
+    if (promptPrice === 0 && completionPrice === 0) {
+        return 'Free';
+    }
+
+    return `$${promptPrice.toFixed(2)} / $${completionPrice.toFixed(2)} per 1M`;
+}
+
+// Создание элемента модели
+function createModelItem(model) {
+    const item = document.createElement('div');
+    item.className = 'model-item';
+
+    const isFavorite = chatState.favoriteModels.some(m => m.id === model.id);
+    const priceText = formatModelPrice(model.pricing);
+
+    item.innerHTML = `
+        <div class="model-item-content">
+            <div class="model-item-name">${model.name}</div>
+            <div class="model-item-id">${model.id}</div>
+            ${model.description ? `<div class="model-item-description">${model.description.substring(0, 100)}...</div>` : ''}
+            <div class="model-item-price">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                ${priceText}
+            </div>
+        </div>
+        <button class="model-item-favorite ${isFavorite ? 'active' : ''}" data-model-id="${model.id}" title="${isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.003-.003.001a.752.752 0 01-.704 0l-.003-.001z"/>
+            </svg>
+        </button>
+    `;
+
+    // Обработчик клика на звезду
+    const favoriteBtn = item.querySelector('.model-item-favorite');
+    favoriteBtn.addEventListener('click', () => {
+        toggleFavoriteModel(model);
+    });
+
+    return item;
+}
+
+// Переключение избранного
+function toggleFavoriteModel(model) {
+    const index = chatState.favoriteModels.findIndex(m => m.id === model.id);
+
+    if (index !== -1) {
+        // Удаляем из избранного
+        chatState.favoriteModels.splice(index, 1);
+    } else {
+        // Добавляем в избранное
+        const provider = model.id.split('/')[0];
+        chatState.favoriteModels.push({
+            id: model.id,
+            name: model.name,
+            description: model.description,
+            provider: getProviderDisplayName(provider)
+        });
+    }
+
+    // Сохраняем
+    saveFavoriteModels();
+
+    // Обновляем селект
+    renderModelSelect();
+
+    // Перерисовываем список в модальном окне
+    const searchInput = document.getElementById('modelSearchInput');
+    const searchQuery = searchInput ? searchInput.value : '';
+
+    if (searchQuery) {
+        searchModels(searchQuery);
+    } else {
+        renderModelList(chatState.allModels);
+    }
+}
+
+// Поиск моделей
+function searchModels(query) {
+    const lowerQuery = query.toLowerCase();
+
+    const filtered = chatState.allModels.filter(model => {
+        return model.id.toLowerCase().includes(lowerQuery) ||
+               model.name.toLowerCase().includes(lowerQuery) ||
+               (model.description && model.description.toLowerCase().includes(lowerQuery));
+    });
+
+    renderModelList(filtered);
+}
+
+// Получение названия провайдера для отображения
+function getProviderDisplayName(provider) {
+    const providerNames = {
+        'openai': 'OpenAI',
+        'anthropic': 'Anthropic Claude',
+        'google': 'Google Gemini',
+        'x-ai': 'xAI Grok',
+        'deepseek': 'DeepSeek'
+    };
+
+    return providerNames[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
+}

@@ -1,0 +1,50 @@
+# Web Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+jinja2>=3.1.4
+python-multipart>=0.0.20
+slowapi>=0.1.9  # Rate limiting
+python-jose[cryptography]>=3.3.0  # JWT токены
+passlib[bcrypt]>=1.7.4  # Хеширование паролей
+
+# Database
+sqlalchemy>=2.0.36
+alembic>=1.14.0
+aiosqlite>=0.20.0
+
+# HTTP Client
+httpx>=0.28.0
+aiohttp>=3.9.1  # Для Telegram webhook и других async HTTP операций
+
+# Telegram Bot
+aiogram>=3.4.1
+
+# Scheduling
+apscheduler>=3.10.4
+
+# Configuration
+pyyaml>=6.0.2
+python-dotenv>=1.0.1
+
+# AI/LLM
+openai>=1.59.0
+anthropic>=0.45.0
+
+# Data Processing (required for predictive modules)
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+packaging>=24.0  # Version comparison для проверки обновлений
+
+# Testing
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+pytest-cov>=6.0.0
+
+# Linting and Formatting
+black>=24.8.0
+flake8>=7.1.0
+mypy>=1.14.0

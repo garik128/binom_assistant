@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Алерты - Binom Assistant{% endblock %}
+{% block page_title %}Алерты{% endblock %}
+
+{% block content %}
+<div class="alerts-container">
+    <!-- Фильтры -->
+    <div class="alerts-filters">
+        <div class="filter-group">
+            <label>Важность:</label>
+            <select id="alertTypeFilter" class="filter-select">
+                <option value="all">Все</option>
+                <option value="critical">Критичные</option>
+                <option value="high">Важные</option>
+                <option value="medium">Средние</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Период:</label>
+            <select id="periodFilter" class="filter-select">
+                <option value="1d">Сегодня</option>
+                <option value="7d" selected>7 дней</option>
+                <option value="14d">14 дней</option>
+                <option value="30d">30 дней</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Модуль:</label>
+            <select id="moduleFilter" class="filter-select">
+                <option value="all">Все модули</option>
+                <!-- Опции загружаются динамически -->
+            </select>
+        </div>
+
+  
+        <button class="btn-primary" onclick="openTelegramSettings()">
+            Настройки Telegram
+        </button>
+    </div>
+
+    <!-- Статистика по алертам -->
+    <div class="alerts-stats">
+        <div class="stat-card critical">
+                       <div class="stat-content">
+                <div class="stat-value" id="criticalCount">-</div>
+                <div class="stat-label">Критичные</div>
+            </div>
+        </div>
+
+        <div class="stat-card warning">
+                      <div class="stat-content">
+                <div class="stat-value" id="highCount">-</div>
+                <div class="stat-label">Важные</div>
+            </div>
+        </div>
+
+        <div class="stat-card info">
+                       <div class="stat-content">
+                <div class="stat-value" id="mediumCount">-</div>
+                <div class="stat-label">Средние</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Список алертов -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2>Все алерты</h2>
+            <button class="alert-btn-danger" onclick="deleteAllAlerts()">
+            Удалить все алерты
+        </button>
+        </div>
+
+        <div id="alertsList" class="alerts-list">
+            <!-- Алерты загружаются через JS -->
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+        </div>
+
+        <!-- Пагинация -->
+        <div class="pagination" id="alertsPagination">
+            <!-- Пагинация загружается через JS -->
+        </div>
+    </div>
+
+    <!-- Типы алертов - справка -->
+    <div class="section-card">
+        <h3><img src="/static/icons/info-circle-A0AFFF.png" alt="" style="vertical-align: middle; width: 16px; height: 16px;"> Уровни важности</h3>
+        <div class="alert-types-info">
+            <div class="alert-type-item">
+                <span class="alert-icon critical"><img src="/static/icons/critical-ef4444.png" alt="Critical"></span>
+                <div>
+                    <strong>Критичные</strong>
+                    <p>Требуют немедленного внимания: большие потери, серьезные проблемы с кампаниями</p>
+                </div>
+            </div>
+
+            <div class="alert-type-item">
+                <span class="alert-icon warning"><img src="/static/icons/warning-f59e0b.png" alt="High"></span>
+                <div>
+                    <strong>Важные</strong>
+                    <p>Потенциальные проблемы: снижение показателей, рост расходов</p>
+                </div>
+            </div>
+
+            <div class="alert-type-item">
+                <span class="alert-icon info"><img src="/static/icons/info-A0AFFF.png" alt="Medium"></span>
+                <div>
+                    <strong>Средние</strong>
+                    <p>Информация для внимания: небольшие изменения, рекомендации</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно настроек Telegram -->
+<div id="telegramSettingsModal" class="custom-confirm-overlay" style="display: none;">
+    <div class="custom-confirm-dialog telegram-settings-dialog">
+        <div class="custom-confirm-header">
+            <h3>Настройки уведомлений Telegram</h3>
+            <button class="custom-confirm-close" onclick="closeTelegramSettings()">&times;</button>
+        </div>
+
+        <div class="telegram-tabs">
+            <button class="telegram-tab active" onclick="switchTelegramTab('critical')">
+                Критичные
+            </button>
+            <button class="telegram-tab" onclick="switchTelegramTab('trend')">
+                Тренды
+            </button>
+            <button class="telegram-tab" onclick="switchTelegramTab('problem')">
+                Проблемы
+            </button>
+            <button class="telegram-tab" onclick="switchTelegramTab('opportunity')">
+                Возможности
+            </button>
+        </div>
+
+        <div class="custom-confirm-body">
+            <div id="criticalModules" class="telegram-tab-content active"></div>
+            <div id="trendModules" class="telegram-tab-content"></div>
+            <div id="problemModules" class="telegram-tab-content"></div>
+            <div id="opportunityModules" class="telegram-tab-content"></div>
+        </div>
+
+        <div class="custom-confirm-footer">
+            <button class="btn-secondary" onclick="closeTelegramSettings()">Отмена</button>
+            <button class="btn-primary" onclick="saveTelegramSettings()">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/alerts.js?v=9"></script>
+{% endblock %}

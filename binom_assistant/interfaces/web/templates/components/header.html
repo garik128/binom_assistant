@@ -1,0 +1,113 @@
+<header class="app-header">
+    <div class="header-left">
+        <button class="menu-toggle" id="menuToggle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+        <h1 class="page-title">{{ page_title }}</h1>
+        <div class="app-logo">
+    <a href="/" class="nav-item"><img src="/static/images/logo.png" alt="Binom Assistant" width="36" height="36">
+    </a>
+</div>
+    </div>
+
+    <div class="header-center">
+        <!-- Навигация перенесена из сайдбара -->
+        <nav class="header-nav">
+            <a href="/" class="nav-item" data-page="dashboard">
+                <svg class="nav-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span class="nav-text">Дашборд</span>
+            </a>
+
+            <a href="/analytics" class="nav-item" data-page="analytics">
+                <svg class="nav-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18"></path>
+                    <path d="m19 9-5 5-4-4-3 3"></path>
+                </svg>
+                <span class="nav-text">Аналитика</span>
+            </a>
+
+            <a href="/alerts" class="nav-item" data-page="alerts">
+                <svg class="nav-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span class="nav-text">Алерты</span>
+            </a>
+
+            <a href="/chat" class="nav-item" data-page="chat">
+                <svg class="nav-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span class="nav-text">AI Чат</span>
+            </a>
+        </nav>
+    </div>
+
+    <div class="header-right">
+        <!-- Настройки -->
+        <a href="/settings"  title="Настройки" class="nav-item" data-page="settings">
+            <svg class="nav-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            
+        </a>
+
+        <!-- Уведомления -->
+        <div class="notifications-wrapper">
+            <button class="icon-btn" id="notificationsBtn" title="Уведомления">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+            </button>
+
+            <!-- Popup меню -->
+            <div class="notifications-dropdown" id="notificationsDropdown" style="display: none;">
+                <div class="notifications-header">
+                    <h3>Уведомления</h3>
+                    <button class="btn-text" id="markAllReadBtn" onclick="markAllAsRead()" title="Отметить все как прочитанные">
+                        Отметить все как прочитанные
+                    </button>
+                </div>
+
+                <div class="notifications-list" id="notificationsList">
+                    <div class="notifications-loading">Загрузка...</div>
+                </div>
+
+                <div class="notifications-footer">
+                    <a href="/alerts" class="btn-primary-small">Смотреть все алерты</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Обновить данные -->
+        <button class="icon-btn" id="refreshBtn" title="Обновить данные за последние 7 дней из Binom">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+        </button>
+
+        <!-- Время последнего обновления с индикатором статуса -->
+        <div class="last-update">
+            <span class="last-update-separator" style="margin: 0 8px; color: var(--text-secondary);">|</span>
+            <span class="status-dot status-online" id="systemStatusDot" title="Система работает нормально"></span>
+            <span class="last-update-label">Обновлено:</span>
+            <span class="last-update-time" id="lastUpdateTime">Загрузка...</span>
+            <span class="last-update-separator" style="margin: 0 8px; color: var(--text-secondary);">|</span>
+            <span class="last-update-label">Uptime:</span>
+            <span class="last-update-time" id="systemUptime">...</span>
+        </div>
+    </div>
+</header>

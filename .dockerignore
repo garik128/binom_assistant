@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment files (except example)
+.env
+.env.*
+!.env.example
+
+# Data and logs (will be mounted as volumes)
+data/
+logs/
+
+# Testing
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+pytest_debug.log
+tests/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (будет добавлено позже если нужно)
+*.md
+!README.md
+DEPLOY_CHECKLIST.md
+structure.md
+webui.md
+RUNNING.md
+
+# CI/CD
+.github/
+
+# History
+.history/
+
+# Scripts (не копируем старые скрипты)
+install.sh
+update_server.sh
+check_all_settings.py
+
+# Temporary files
+*.tmp
+*.bak
+*.log

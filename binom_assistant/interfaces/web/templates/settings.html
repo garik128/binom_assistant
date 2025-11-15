@@ -1,0 +1,2205 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки - Binom Assistant{% endblock %}
+{% block page_title %}
+     Настройки
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/settings.css">
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+
+    <!-- Header с кнопками действий -->
+    <div class="settings-header">
+        <div class="settings-header-left">
+            <h1>Настройки</h1>
+        </div>
+        <div class="settings-header-right">
+            <button class="btn-secondary" id="testConnectionBtn">
+                <img src="/static/icons/check-10b981.png" alt="" style="width: 16px; height: 16px;">
+                Проверить "здоровье"
+            </button>
+            <button class="btn-secondary" id="restartAppBtn" style="margin-left: 8px;">
+                <img src="/static/icons/update-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                Перезапустить
+            </button>
+            <button class="btn-secondary" id="installPWABtn" style="margin-left: 8px;">
+                <img src="/static/icons/export-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                Установить PWA
+            </button>
+            <label class="theme-toggle compact-view-toggle" style="margin-left: 12px;">
+                <span class="toggle-text">Темная тема</span>
+                <input type="checkbox" id="themeToggle" checked>
+                <div class="toggle-slider"></div>
+            </label>
+            <button class="btn-secondary" id="logoutBtn" style="margin-left: 12px;">
+                <img src="/static/icons/export-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                Выйти
+            </button>
+        </div>
+    </div>
+
+    <!-- Вкладки настроек -->
+    <div class="settings-tabs">
+        <button class="tab-btn active" data-tab="general">
+            <img src="/static/icons/settings-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+            Основные
+        </button>
+        <button class="tab-btn" data-tab="api">
+            <img src="/static/icons/api-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+            API и интеграции
+        </button>
+        <button class="tab-btn" data-tab="backup">
+            <img src="/static/icons/export-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+            Обновления и бэкап
+        </button>
+        <button class="tab-btn" data-tab="system">
+            <img src="/static/icons/info-A0AFFF.png" alt="" style="width: 16px; height: 16px;">
+            Информация о системе
+        </button>
+        <button class="tab-btn" data-tab="logs">
+            <img src="/static/icons/database-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+            Системные логи
+        </button>
+    </div>
+
+    <!-- Контент вкладок -->
+    <div class="settings-content">
+        <!-- Вкладка: Основные настройки -->
+        <div class="tab-content active" id="tab-general">
+            <!-- Периоды обновления данных -->
+            <div class="settings-section" data-section="update-periods">
+                <div class="section-header">
+                    <h2>Периоды обновления данных</h2>
+                    <span class="badge badge-editable">Редактируется</span>
+                </div>
+                <p class="section-description">Настройка частоты сбора данных из Binom и периода обновления статистики</p>
+
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="updateDaysDaily">
+                            <img src="/static/icons/calendar-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Период обновления (дней)
+                        </label>
+                        <input type="number" id="updateDaysDaily" class="setting-input" value="7" min="1" max="30" data-original="7">
+                        <small>За сколько дней обновлять статистику (апрувы прилетают задним числом)</small>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="apiPauseSeconds">
+                            <img src="/static/icons/update-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Пауза между запросами (сек)
+                        </label>
+                        <input type="number" id="apiPauseSeconds" class="setting-input" value="3" min="0" max="180" step="1" data-original="3">
+                        <small>Пауза между блоками запросов к Binom API (чтобы не перегружать трекер)</small>
+                    </div>
+                </div>
+
+                <!-- Кнопки сохранить/отменить (скрыты по умолчанию) -->
+                <div class="section-actions" style="display: none;">
+                    <button class="btn-secondary btn-cancel">
+                        Отменить
+                    </button>
+                    <button class="btn-primary btn-save">
+                        <img src="/static/icons/success-10b981.png" alt="" style="width: 16px; height: 16px;">
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+
+            <!-- Расписание задач -->
+            <div class="settings-section" data-section="schedule">
+                <div class="section-header">
+                    <h2>Расписание задач</h2>
+                    <span class="badge badge-editable">Редактируется</span>
+                </div>
+                <p class="section-description">Настройка времени автоматического выполнения задач обслуживания</p>
+
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="scheduleDailyStatsPreset">
+                            <img src="/static/icons/update-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Обновление дневной статистики
+                        </label>
+                        <select id="scheduleDailyStatsPreset" class="setting-input" data-original="0 * * * *">
+                            <option value="">Не запускать автоматически</option>
+                            <option value="0 * * * *">Каждый час</option>
+                            <option value="0 */2 * * *">Каждые 2 часа</option>
+                            <option value="0 */4 * * *">Каждые 4 часа</option>
+                            <option value="0 */6 * * *">Каждые 6 часов</option>
+                            <option value="0 */12 * * *">Каждые 12 часов</option>
+                            <option value="0 0 * * *">Ежедневно в 00:00</option>
+                            <option value="0 9 * * *">Ежедневно в 09:00</option>
+                            <option value="0 12 * * *">Ежедневно в 12:00</option>
+                            <option value="0 0 * * 1">Еженедельно (понедельник)</option>
+                            <option value="custom">Свой формат cron</option>
+                        </select>
+                        <small>Автоматический запуск обновления дневной статистики по расписанию</small>
+                        <input type="text" id="scheduleDailyStats" placeholder="0 * * * *"
+                               class="setting-input" style="display: none; margin-top: 0.5rem;" data-original="0 * * * *">
+                        <small class="setting-help" style="display: none;">Формат: минута час день месяц день_недели</small>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="scheduleWeeklyStatsPreset">
+                            <img src="/static/icons/calendar-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Расчет недельной статистики
+                        </label>
+                        <select id="scheduleWeeklyStatsPreset" class="setting-input" data-original="0 4 * * 1">
+                            <option value="">Не запускать автоматически</option>
+                            <option value="0 * * * *">Каждый час</option>
+                            <option value="0 */2 * * *">Каждые 2 часа</option>
+                            <option value="0 */4 * * *">Каждые 4 часа</option>
+                            <option value="0 */6 * * *">Каждые 6 часов</option>
+                            <option value="0 */12 * * *">Каждые 12 часов</option>
+                            <option value="0 0 * * *">Ежедневно в 00:00</option>
+                            <option value="0 9 * * *">Ежедневно в 09:00</option>
+                            <option value="0 12 * * *">Ежедневно в 12:00</option>
+                            <option value="0 0 * * 1">Еженедельно (понедельник в 00:00)</option>
+                            <option value="0 4 * * 1">Еженедельно (понедельник в 04:00)</option>
+                            <option value="0 9 * * 1">Еженедельно (понедельник в 09:00)</option>
+                            <option value="0 0 * * 0">Еженедельно (воскресенье в 00:00)</option>
+                            <option value="0 3 * * 0">Еженедельно (воскресенье в 03:00)</option>
+                            <option value="custom">Свой формат cron</option>
+                        </select>
+                        <small>Автоматический расчет недельной статистики по расписанию</small>
+                        <input type="text" id="scheduleWeeklyStats" placeholder="0 4 * * 1"
+                               class="setting-input" style="display: none; margin-top: 0.5rem;" data-original="0 4 * * 1">
+                        <small class="setting-help" style="display: none;">Формат: минута час день месяц день_недели</small>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="dataRetentionDays">
+                            <img src="/static/icons/database-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Период хранения данных (дней)
+                        </label>
+                        <input type="number" id="dataRetentionDays" class="setting-input" value="90" min="7" max="365" data-original="90">
+                        <small>Автоматическая очистка данных старше указанного периода (каждое воскресенье в 05:00)</small>
+                    </div>
+
+                </div>
+
+                <div class="info-box">
+                    <img src="/static/icons/info-A0AFFF.png" alt="" style="width: 20px; height: 20px;">
+                    <div>
+                        <strong>Расписание в cron формате:</strong> выберите готовый вариант из списка или укажите свой формат (минута час день_месяца месяц день_недели)
+                    </div>
+                </div>
+
+                <!-- Кнопки сохранить/отменить (скрыты по умолчанию) -->
+                <div class="section-actions" style="display: none;">
+                    <button class="btn-secondary btn-cancel">
+                        Отменить
+                    </button>
+                    <button class="btn-primary btn-save">
+                        <img src="/static/icons/success-10b981.png" alt="" style="width: 16px; height: 16px;">
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+
+            <!-- Операции с данными -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <h2>Операции с данными</h2>
+                    <span class="badge badge-danger">Требует осторожности</span>
+                </div>
+                <p class="section-description">Действия по управлению данными в базе</p>
+
+                <div class="data-operations">
+                    <div class="operation-item">
+                        <div class="operation-info">
+                            <h3>Очистить кэш системы</h3>
+                            <p>Удалить временные данные и кэш настроек (настройки останутся)</p>
+                        </div>
+                        <button class="btn-secondary" id="clearCacheBtn">
+                            <img src="/static/icons/update-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                            Очистить кэш
+                        </button>
+                    </div>
+
+                    <div class="operation-item">
+                        <div class="operation-info">
+                            <h3>Очистить кеш браузера</h3>
+                            <p>Удалить статику (CSS, JS, изображения). Не сработает если есть CDN (Cloudflare Cache, например).</p>
+                        </div>
+                        <button class="btn-secondary" id="clearBrowserCacheBtn">
+                            <img src="/static/icons/update-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                            Очистить кеш браузера
+                        </button>
+                    </div>
+
+                    <div class="operation-item">
+                        <div class="operation-info">
+                            <h3>⚠️ Полная очистка и пересборка</h3>
+                            <p>УДАЛИТ ВСЕ данные (кампании, источники, офферы, партнерки) и соберет заново за 60 дней из Binom.</p>
+                        </div>
+                        <button class="btn-secondary" id="rebuildStatsBtn" style="background: #c62828; color: white;">
+                            <img src="/static/icons/database-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                            Очистить и пересобрать
+                        </button>
+                    </div>
+
+                    <div class="operation-item danger">
+                        <div class="operation-info">
+                            <h3>Сброс всех настроек</h3>
+                            <p>Вернуть все настройки к значениям по умолчанию</p>
+                        </div>
+                        <button class="btn-danger" id="resetAllSettingsBtn">
+                            <img src="/static/icons/critical-ef4444.png" alt="" style="width: 16px; height: 16px;">
+                            Сбросить настройки
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка: API и интеграции -->
+        <div class="tab-content" id="tab-api">
+            <div class="settings-section">
+                <div class="section-header">
+                    <h2>Binom API</h2>
+                    <span class="badge badge-readonly">Только чтение</span>
+                </div>
+                <p class="section-description">Настройки подключения к Binom API (редактируются в файле .env)</p>
+
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/api-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            URL Binom
+                        </label>
+                        <div class="setting-value readonly">{{ config.binom_url }}</div>
+                        <small>Адрес вашего Binom трекера</small>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/settings-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            API Key
+                        </label>
+                        <div class="setting-value readonly masked">
+                            {{ config.binom_api_key[:10] }}...{{ config.binom_api_key[-4:] if config.binom_api_key|length > 14 else '' }}
+                        </div>
+                        <small>API ключ для доступа к Binom (замаскирован)</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="section-header">
+                    <h2>Telegram Bot</h2>
+                    <span class="badge badge-readonly">Только чтение</span>
+                </div>
+                <p class="section-description">Настройки Telegram бота (редактируются в файле .env)</p>
+
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/telegram-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Bot Token
+                        </label>
+                        <div class="setting-value readonly masked">
+                            {{ telegram_config.bot_token[:10] if telegram_config.bot_token else 'Не настроен' }}{{ '...' if telegram_config.bot_token else '' }}
+                        </div>
+                        <small>Токен Telegram бота (замаскирован)</small>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/target-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Chat ID
+                        </label>
+                        <div class="setting-value readonly">{{ telegram_config.chat_id if telegram_config.chat_id else 'Не настроен' }}</div>
+                        <small>ID чата для уведомлений</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="section-header">
+                    <h2>OpenRouter AI</h2>
+                    <span class="badge badge-readonly">Только чтение</span>
+                </div>
+                <p class="section-description">Настройки OpenRouter API для AI агентов (редактируются в файле .env)</p>
+
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/settings-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            API Key
+                        </label>
+                        <div class="setting-value readonly masked">
+                            {{ openrouter_config.api_key[:15] if openrouter_config.api_key else 'Не настроен' }}{{ '...' + openrouter_config.api_key[-4:] if openrouter_config.api_key and openrouter_config.api_key|length > 19 else '' }}
+                        </div>
+                        <small>API ключ OpenRouter (замаскирован)</small>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/ai-assistant-A0AFFF.png" alt="" style="width: 14px; height: 14px;">
+                            Модель
+                        </label>
+                        <div class="setting-value readonly">{{ openrouter_config.model if openrouter_config.model else 'Не настроена' }}</div>
+                        <small>AI модель для анализа данных</small>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/info-A0AFFF.png" alt="" style="width: 14px; height: 14px;">
+                            Max Tokens
+                        </label>
+                        <div class="setting-value readonly">{{ openrouter_config.max_tokens if openrouter_config.max_tokens else 'Не настроено' }}</div>
+                        <small>Максимальная длина ответа модели</small>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/database-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Context Messages
+                        </label>
+                        <div class="setting-value readonly">{{ openrouter_config.context_messages if openrouter_config.context_messages else 'Не настроено' }}</div>
+                        <small>Количество сообщений в контексте</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <img src="/static/icons/info-A0AFFF.png" alt="" style="width: 20px; height: 20px;">
+                <div>
+                    <strong>Изменения в .env файле:</strong> После редактирования .env файла (URL Binom, API ключи, токены) нажмите кнопку "Перезапустить приложение" в правом верхнем углу для применения изменений.
+                </div>
+            </div>
+        </div>
+
+         <!-- Вкладка: Обновления и бэкап -->
+        <div class="tab-content" id="tab-backup">
+            <!-- Секция: Обновления -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <h2>Обновление приложения</h2>
+                    <span class="badge badge-readonly">Docker образ</span>
+                </div>
+                <p class="section-description">Проверка и установка обновлений</p>
+
+                <!-- Информация о текущей версии -->
+                <div id="versionStatusBox" class="info-box" style="margin-bottom: 1rem;">
+                    <img src="/static/icons/info-A0AFFF.png" alt="" style="width: 20px; height: 20px;">
+                    <div id="versionStatusText">
+                        <strong>Текущая версия:</strong> <span id="currentVersion">Загрузка...</span>
+                    </div>
+                </div>
+
+                <!-- Кнопка проверки обновлений -->
+                <div class="data-operations" style="margin-bottom: 1.5rem;">
+                    <div class="operation-item">
+                        <div class="operation-info">
+                            <h3>Проверить обновления</h3>
+                            <p>Проверка наличия новых версий на GitHub</p>
+                        </div>
+                        <button class="btn-primary" id="checkGithubUpdatesBtn">
+                            <img src="/static/icons/update-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                            Проверить
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Результат проверки обновлений (скрыт по умолчанию) -->
+                <div id="updateResultBox" style="display: none; margin-bottom: 1.5rem;"></div>
+
+                <!-- Инструкция по обновлению -->
+                <div class="info-box">
+                     <div>
+                        <strong>Как обновить приложение:</strong>
+                        <pre style="margin: 0.5rem 0; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px; overflow-x: auto;"><code># Рекомендуемый способ (с автоматическим бэкапом):
+chmod +x ./scripts/*.sh && ./scripts/upgrade.sh
+
+# Или вручную:
+git stash                    # Сохранить локальные изменения
+git pull                     # Обновить код
+docker compose pull          # Скачать новый образ
+docker compose up -d         # Перезапустить контейнер
+
+# Для конкретной версии:
+./scripts/upgrade.sh v1.2.3</code></pre>
+                        <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">
+                            Скрипт upgrade.sh автоматически создаст бэкап БД перед обновлением и проверит работоспособность после.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Секция: Бэкап БД -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <h2>Бэкап базы данных</h2>
+                    <span class="badge badge-readonly">Ручное управление</span>
+                </div>
+                <p class="section-description">Создание и управление резервными копиями базы данных</p>
+
+                <div class="data-operations" style="margin-bottom: 1.5rem;">
+                    <div class="operation-item">
+                        <div class="operation-info">
+                            <h3>Создать бэкап</h3>
+                            <p>Создать резервную копию базы данных (сжатый .db.gz файл)</p>
+                        </div>
+                        <button class="btn-primary" id="createBackupBtn">
+                            <img src="/static/icons/database-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                            Создать бэкап
+                        </button>
+                    </div>
+
+                    <div class="operation-item">
+                        <div class="operation-info">
+                            <h3>Удалить старые бэкапы</h3>
+                            <p>Удалить все бэкапы кроме последних 7 штук</p>
+                        </div>
+                        <button class="btn-secondary" id="cleanOldBackupsBtn">
+                            <img src="/static/icons/update-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                            Очистить старые
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Список бэкапов -->
+                <div id="backupListContainer">
+                    <h3 style="margin-bottom: 1rem;">Доступные бэкапы:</h3>
+                    <div id="backupList" class="logs-loading">
+                        Загрузка списка бэкапов...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка: Системная информация -->
+        <div class="tab-content" id="tab-system">
+            <div class="settings-section">
+                <div class="section-header">
+                    <h2>Приложение</h2>
+                    <span class="badge badge-readonly">Только чтение</span>
+                </div>
+                <p class="section-description">Информация о системном окружении и состоянии приложения</p>
+
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/settings-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Режим работы
+                        </label>
+                        <div class="setting-value readonly">
+                            <span id="environmentValue" class="status-badge">Загрузка...</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/info-A0AFFF.png" alt="" style="width: 14px; height: 14px;">
+                            Debug Mode
+                        </label>
+                        <div class="setting-value readonly">
+                            <span id="debugModeValue" class="status-badge">Загрузка...</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/database-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Уровень логирования
+                        </label>
+                        <div id="logLevelValue" class="setting-value readonly">Загрузка...</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/database-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            База данных
+                        </label>
+                        <div class="setting-value readonly">{{ db_config.url }}</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/calendar-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            Часовой пояс
+                        </label>
+                        <div id="timezoneValue" class="setting-value readonly">Загрузка...</div>
+                    </div>
+
+                     <div class="setting-item">
+                        <label>
+                            <img src="/static/icons/api-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                            API Документация
+                        </label>
+                       <span class="setting-value readonly"><a href="/docs" style="color: var(--text-primary);" >Swagger UI</a> | <a href="/redoc" style="color: var(--text-primary);" >ReDoc</a> </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="section-header">
+                    <h2>О приоритете настроек</h2>
+                </div>
+                <div class="priority-info">
+                    <div class="priority-level">
+                        <div class="priority-badge priority-1">1</div>
+                        <div class="priority-content">
+                            <h4>ENV переменные (системные)</h4>
+                            <p>Устанавливаются на уровне ОС / docker / systemd. Высший приоритет для production окружения.</p>
+                        </div>
+                    </div>
+                    <div class="priority-level">
+                        <div class="priority-badge priority-2">2</div>
+                        <div class="priority-content">
+                            <h4>.env файл</h4>
+                            <p>Критичные настройки (токены, API keys, URL), системные параметры, настройки требующие перезапуска.</p>
+                        </div>
+                    </div>
+                    <div class="priority-level">
+                        <div class="priority-badge priority-3">3</div>
+                        <div class="priority-content">
+                            <h4>База данных</h4>
+                            <p>Настройки через Web UI. Применяются мгновенно без перезапуска приложения.</p>
+                        </div>
+                    </div>
+                    <div class="priority-level">
+                        <div class="priority-badge priority-4">4</div>
+                        <div class="priority-content">
+                            <h4>Defaults в коде</h4>
+                            <p>Значения по умолчанию, если настройка не найдена ни в одном из источников.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка: Логи -->
+        <div class="tab-content" id="tab-logs">
+            <div class="settings-section">
+                <div style="align-items: center;justify-content: space-around;margin-bottom: 0;padding-bottom: 0;border-bottom: none;flex-wrap: nowrap;align-content: space-around;" class="section-header">
+                    <div class="logs-controls" style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <select id="logLevelFilter" class="setting-input" style="width: 200px;">
+                            <option value="">Все уровни</option>
+                            <option value="ERROR">ERROR - Ошибки</option>
+                            <option value="WARNING">WARNING - Предупреждения</option>
+                            <option value="INFO">INFO - Информация</option>
+                            <option value="DEBUG">DEBUG - Отладка</option>
+                        </select>
+
+                        <input type="text" id="logSearchInput" class="setting-input" placeholder="Поиск по содержимому..." style="width: 250px;">
+
+                        <label for="logLimitInput" style="margin: 0;">Количество записей:</label>
+                        <input type="number" id="logLimitInput" class="setting-input" value="50" min="10" max="500" style="width: 80px;">
+
+                        <button class="btn-secondary" id="loadLogsBtn">
+                            <img src="/static/icons/update-EDEDED.png" alt="" style="width: 16px; height: 16px;">
+                            Обновить
+                        </button>
+
+                        <button class="btn-danger" id="clearLogsBtn" style="margin-left: auto;">
+                            <img src="/static/icons/critical-ef4444.png" alt="" style="width: 16px; height: 16px;">
+                            Очистить логи
+                        </button>
+                    </div>
+                </div>
+
+                <div id="logsContainer" class="logs-container">
+                    <div class="logs-loading">Загрузка логов...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка инструкции установки PWA для iOS/Mac -->
+    <div id="pwaInstructionsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Установка PWA</h3>
+                <button class="modal-close" onclick="closePWAInstructionsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="padding: 20px;">
+                    <div id="safariInstructions" style="display: none;">
+                        <h4 style="margin-bottom: 15px; color: var(--text-primary);">Safari (iOS/Mac):</h4>
+                        <ol style="line-height: 1.8; color: var(--text-secondary);">
+                            <li>Нажмите кнопку "Поделиться" (квадрат со стрелкой вверх)</li>
+                            <li>Прокрутите вниз и выберите "На экран Домой" или "Добавить на Dock"</li>
+                            <li>Нажмите "Добавить"</li>
+                        </ol>
+                    </div>
+
+                    <div id="chromeInstructions" style="display: none;">
+                        <h4 style="margin-bottom: 15px; color: var(--text-primary);">Chrome/Edge:</h4>
+                        <p style="line-height: 1.8; color: var(--text-secondary);">
+                            В адресной строке должна появиться иконка установки.
+                            Нажмите на нее и следуйте инструкциям.
+                        </p>
+                    </div>
+
+                    <div id="unsupportedInstructions" style="display: none;">
+                        <p style="line-height: 1.8; color: var(--text-secondary);">
+                            Ваш браузер не поддерживает установку PWA.
+                            Попробуйте использовать Chrome, Edge или Safari.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Settings page version: 2025-11-10-v6-fixed
+console.log('[Settings] Page loaded - version 2025-11-10-v6-fixed');
+
+// Глобальное состояние
+const settingsState = {
+    currentTab: 'general',
+    unsavedChanges: false,
+    originalValues: {}
+};
+
+// Загрузка конфигурации приложения
+async function loadAppConfig() {
+    try {
+        const config = await api.get('/system/config');
+
+        // Environment
+        const envEl = document.getElementById('environmentValue');
+        if (envEl) {
+            envEl.textContent = config.environment || 'development';
+            envEl.className = 'status-badge ' + (config.environment === 'development' ? 'dev' : 'prod');
+        }
+
+        // Debug Mode
+        const debugEl = document.getElementById('debugModeValue');
+        if (debugEl) {
+            debugEl.textContent = config.debug ? 'Включен' : 'Выключен';
+            debugEl.className = 'status-badge ' + (config.debug ? 'active' : 'inactive');
+        }
+
+        // Log Level
+        const logLevelEl = document.getElementById('logLevelValue');
+        if (logLevelEl) {
+            logLevelEl.textContent = config.log_level || 'INFO';
+        }
+
+        // Timezone
+        const timezoneEl = document.getElementById('timezoneValue');
+        if (timezoneEl) {
+            timezoneEl.textContent = config.timezone || 'UTC';
+        }
+
+    } catch (error) {
+        console.error('Error loading app config:', error);
+        // В случае ошибки показываем 'N/A'
+        const elements = ['environmentValue', 'debugModeValue', 'logLevelValue', 'timezoneValue'];
+        elements.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = 'N/A';
+        });
+    }
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    initTabs();
+    initSchedulePresets();
+    initLogoutButton();
+    loadSettings(); // Загрузка должна быть перед initFormHandlers
+    initFormHandlers();
+    loadAppConfig(); // Загружаем конфигурацию приложения
+});
+
+// Управление вкладками
+function initTabs() {
+    const tabs = document.querySelectorAll('.settings-tabs .tab-btn');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+            switchTab(tabName);
+        });
+    });
+}
+
+function switchTab(tabName) {
+    // Снять активность со всех вкладок
+    document.querySelectorAll('.settings-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelectorAll('.settings-content .tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    // Активировать выбранную
+    document.querySelector(`.settings-tabs .tab-btn[data-tab="${tabName}"]`).classList.add('active');
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    settingsState.currentTab = tabName;
+}
+
+// Кнопка выхода
+function initLogoutButton() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            // Удаляем токен из localStorage
+            localStorage.removeItem('access_token');
+
+            // Показываем уведомление
+            showToast('Вы вышли из системы', 'info');
+
+            // Перенаправляем на страницу логина через 500мс
+            setTimeout(() => {
+                window.location.href = '/api/v1/auth/login';
+            }, 500);
+        });
+    }
+}
+
+// Пресеты расписания
+function initSchedulePresets() {
+    // Обрабатываем пары preset/custom полей для расписания
+    const scheduleFields = [
+        { presetId: 'scheduleDailyStatsPreset', customId: 'scheduleDailyStats' },
+        { presetId: 'scheduleWeeklyStatsPreset', customId: 'scheduleWeeklyStats' }
+    ];
+
+    scheduleFields.forEach(field => {
+        const presetSelect = document.getElementById(field.presetId);
+        const customInput = document.getElementById(field.customId);
+
+        if (!presetSelect || !customInput) return; // Элементы не существуют
+
+        const helpText = customInput.nextElementSibling;
+
+        presetSelect.addEventListener('change', (e) => {
+            console.log(`[initSchedulePresets] Preset changed: ${presetSelect.id} = "${e.target.value}"`);
+
+            if (e.target.value === 'custom') {
+                // Показать поле для кастомного cron
+                customInput.style.display = 'block';
+                if (helpText && helpText.classList.contains('setting-help')) {
+                    helpText.style.display = 'block';
+                }
+            } else {
+                // Скрыть кастомное поле и установить значение из пресета
+                customInput.style.display = 'none';
+                if (helpText && helpText.classList.contains('setting-help')) {
+                    helpText.style.display = 'none';
+                }
+                // Установить значение (может быть пустая строка для "Не запускать")
+                customInput.value = e.target.value || '';
+                customInput.dataset.original = e.target.value || '';
+                console.log(`[initSchedulePresets] Set ${customInput.id} = "${customInput.value}", original="${customInput.dataset.original}"`);
+            }
+        });
+    });
+}
+
+// Обработчики форм
+function initFormHandlers() {
+    // Отслеживание изменений в каждой секции
+    const sections = document.querySelectorAll('.settings-section[data-section], .agent-prompt-content[data-section]');
+
+    sections.forEach(section => {
+        const sectionId = section.dataset.section;
+        const inputs = section.querySelectorAll('.setting-input, .setting-textarea, input[type="checkbox"]');
+        const actionsDiv = section.querySelector('.section-actions');
+        const saveBtn = actionsDiv?.querySelector('.btn-save');
+        const cancelBtn = actionsDiv?.querySelector('.btn-cancel');
+
+        // Отслеживание изменений в инпутах
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                checkSectionChanges(section, actionsDiv);
+            });
+            input.addEventListener('change', () => {
+                checkSectionChanges(section, actionsDiv);
+            });
+        });
+
+        // Кнопка сохранить
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                saveSectionSettings(section, sectionId);
+            });
+        }
+
+        // Кнопка отменить
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                cancelSectionChanges(section, actionsDiv);
+            });
+        }
+    });
+
+    // Проверка подключения
+    document.getElementById('testConnectionBtn')?.addEventListener('click', testBinomConnection);
+
+    // Перезапуск приложения
+    document.getElementById('restartAppBtn')?.addEventListener('click', restartApplication);
+
+    // Установка PWA
+    document.getElementById('installPWABtn')?.addEventListener('click', installPWA);
+
+    // Операции с данными
+    document.getElementById('clearCacheBtn')?.addEventListener('click', clearCache);
+    document.getElementById('clearBrowserCacheBtn')?.addEventListener('click', clearBrowserCacheSetting);
+    document.getElementById('rebuildStatsBtn')?.addEventListener('click', rebuildStats);
+    document.getElementById('resetAllSettingsBtn')?.addEventListener('click', resetAllSettings);
+}
+
+// Проверка изменений в секции
+function checkSectionChanges(section, actionsDiv) {
+    const inputs = section.querySelectorAll('.setting-input, .setting-textarea, input[type="checkbox"]');
+    let hasChanges = false;
+
+    inputs.forEach(input => {
+        const original = input.dataset.original;
+        let currentValue;
+
+        if (input.type === 'checkbox') {
+            currentValue = input.checked.toString();
+        } else {
+            currentValue = input.value;
+        }
+
+        if (currentValue !== original) {
+            console.log(`[checkSectionChanges] Change detected in ${input.id}: "${original}" -> "${currentValue}"`);
+            hasChanges = true;
+        }
+    });
+
+    // Показать/скрыть кнопки
+    if (actionsDiv) {
+        actionsDiv.style.display = hasChanges ? 'flex' : 'none';
+        console.log(`[checkSectionChanges] Section ${section.dataset.section}: hasChanges=${hasChanges}, buttons display=${actionsDiv.style.display}`);
+    }
+}
+
+// Отмена изменений в секции
+function cancelSectionChanges(section, actionsDiv) {
+    const inputs = section.querySelectorAll('.setting-input, .setting-textarea, input[type="checkbox"]');
+
+    inputs.forEach(input => {
+        const original = input.dataset.original;
+
+        if (input.type === 'checkbox') {
+            input.checked = original === 'true';
+        } else {
+            input.value = original;
+        }
+    });
+
+    // Скрыть кнопки
+    if (actionsDiv) {
+        actionsDiv.style.display = 'none';
+    }
+}
+
+// Сохранение настроек секции
+async function saveSectionSettings(section, sectionId) {
+    const inputs = section.querySelectorAll('.setting-input, .setting-textarea, input[type="checkbox"]');
+
+    // Маппинг input ID на ключи настроек в БД
+    const keyMapping = {
+        'updateDaysDaily': 'collector.update_days',
+        'apiPauseSeconds': 'collector.api_pause',
+        'scheduleDailyStats': 'schedule.daily_stats',
+        'scheduleWeeklyStats': 'schedule.weekly_stats',
+        'dataRetentionDays': 'data.retention_days'
+    };
+
+    console.log(`[saveSectionSettings] Saving section: ${sectionId}`);
+
+    try {
+        // Сохраняем каждую настройку отдельно через API
+        for (const input of inputs) {
+            // Пропускаем preset селекты, они управляют скрытыми полями
+            if (input.id && input.id.endsWith('Preset')) {
+                console.log(`[saveSectionSettings] Skipping preset select: ${input.id}`);
+                continue;
+            }
+
+            let value;
+            let valueType;
+
+            if (input.type === 'checkbox') {
+                value = input.checked.toString();
+                valueType = 'bool';
+            } else if (input.type === 'number') {
+                value = input.value;
+                // Специальная обработка для float полей
+                if (input.id === 'apiPauseSeconds') {
+                    valueType = 'float';
+                } else {
+                    valueType = 'int';
+                }
+            } else {
+                value = input.value;
+                valueType = 'string';
+            }
+
+            // Определяем ключ настройки
+            const settingKey = keyMapping[input.id];
+            if (!settingKey) {
+                console.warn(`No mapping for input ${input.id}, skipping`);
+                continue;
+            }
+
+            console.log(`[saveSectionSettings] Saving ${input.id} (${settingKey}): value="${value}", valueType="${valueType}"`);
+
+            // Отправляем запрос на обновление
+            await api.put(`/settings/${settingKey}`, {
+                value: value,
+                value_type: valueType
+            });
+
+            console.log(`[saveSectionSettings] Successfully saved ${input.id}`);
+        }
+
+        // Обновить data-original значения после успешного сохранения
+        inputs.forEach(input => {
+            if (input.type === 'checkbox') {
+                input.dataset.original = input.checked.toString();
+            } else {
+                input.dataset.original = input.value;
+            }
+        });
+
+        // Скрыть кнопки
+        const actionsDiv = section.querySelector('.section-actions');
+        if (actionsDiv) {
+            actionsDiv.style.display = 'none';
+        }
+
+        showToast('Настройки сохранены', 'success');
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showToast(`Ошибка сохранения настроек: ${error.message}`, 'error');
+    }
+}
+
+
+// Загрузка настроек
+async function loadSettings() {
+    try {
+        const data = await api.get('/settings');
+
+        // API возвращает объект {key: value}
+        const settings = data.settings || {};
+
+        populateSettings(settings);
+
+        // Сохранить оригинальные значения
+        settingsState.originalValues = { ...settings };
+        settingsState.unsavedChanges = false;
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showToast('Ошибка загрузки настроек', 'error');
+    }
+}
+
+// Заполнение формы настройками
+function populateSettings(settings) {
+    // Основные настройки - маппинг ключей из БД на input ID
+    setValue('updateDaysDaily', settings['collector.update_days']);
+    setValue('apiPauseSeconds', settings['collector.api_pause']);
+
+    // Планировщик - устанавливаем значения пресетов и скрытых полей
+    setSchedulePreset('scheduleDailyStatsPreset', 'scheduleDailyStats', settings['schedule.daily_stats']);
+    setSchedulePreset('scheduleWeeklyStatsPreset', 'scheduleWeeklyStats', settings['schedule.weekly_stats']);
+
+    // Данные
+    setValue('dataRetentionDays', settings['data.retention_days']);
+}
+
+// Вспомогательные функции
+function setValue(id, value) {
+    const el = document.getElementById(id);
+    if (el && value !== undefined && value !== null) {
+        el.value = value;
+        el.dataset.original = value; // Сохранить оригинальное значение
+    }
+}
+
+function setChecked(id, checked) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.checked = !!checked;
+        el.dataset.original = checked.toString(); // Сохранить оригинальное значение
+    }
+}
+
+function setSchedulePreset(presetId, customInputId, cronValue) {
+    const presetSelect = document.getElementById(presetId);
+    const customInput = document.getElementById(customInputId);
+
+    if (!presetSelect || !customInput) return;
+
+    console.log(`[setSchedulePreset] ${presetId}: cronValue="${cronValue}"`);
+
+    // Если значение "false" или пустое - устанавливаем "" (не запускать)
+    if (!cronValue || cronValue === 'false' || cronValue === 'undefined') {
+        cronValue = '';
+    }
+
+    // Устанавливаем значение в скрытый input
+    customInput.value = cronValue;
+    customInput.dataset.original = cronValue;
+
+    // Проверяем, есть ли это значение в пресетах
+    const presetOption = Array.from(presetSelect.options).find(option => option.value === cronValue);
+
+    if (presetOption) {
+        // Есть готовый пресет - выбираем его
+        presetSelect.value = cronValue;
+        presetSelect.dataset.original = cronValue;
+        customInput.style.display = 'none';
+        const helpText = customInput.nextElementSibling;
+        if (helpText && helpText.classList.contains('setting-help')) {
+            helpText.style.display = 'none';
+        }
+    } else {
+        // Кастомное значение - выбираем "custom" и показываем поле
+        presetSelect.value = 'custom';
+        presetSelect.dataset.original = 'custom';
+        customInput.style.display = 'block';
+        const helpText = customInput.nextElementSibling;
+        if (helpText && helpText.classList.contains('setting-help')) {
+            helpText.style.display = 'block';
+        }
+    }
+}
+
+// Сохранение всех настроек
+
+// Проверка подключения к Binom
+async function testBinomConnection() {
+    const btn = document.getElementById('testConnectionBtn');
+    const originalText = btn.innerHTML;
+
+    // Показываем индикатор загрузки
+    btn.disabled = true;
+    btn.innerHTML = '<img src="/static/icons/update-EDEDED.png" alt="" style="width: 16px; height: 16px; animation: spin 1s linear infinite;"> Проверка...';
+
+    try {
+        const data = await api.get('/health/detailed');
+
+        // Проверяем общий статус
+        if (data.status === 'ok') {
+            // Все компоненты работают
+            let message = 'Все компоненты работают исправно:\n';
+
+            if (data.components.database?.status === 'ok') {
+                message += '[OK] База данных\n';
+            }
+            if (data.components.binom_api?.status === 'ok') {
+                message += '[OK] Binom API\n';
+            }
+            if (data.components.disk_space?.status === 'ok') {
+                const freePct = ((data.components.disk_space.free_gb / data.components.disk_space.total_gb) * 100).toFixed(1);
+                message += `[OK] Дисковое пространство (${freePct}% свободно)\n`;
+            }
+            if (data.components.scheduler?.status === 'ok') {
+                message += '[OK] Планировщик задач\n';
+            }
+
+            showToast(message.trim(), 'success');
+        } else {
+            // Есть проблемы
+            let message = 'Обнаружены проблемы:\n';
+            let hasErrors = false;
+
+            // Проверяем каждый компонент
+            for (const [key, component] of Object.entries(data.components)) {
+                if (component.status === 'error') {
+                    hasErrors = true;
+                    const componentName = key === 'database' ? 'База данных' :
+                                         key === 'binom_api' ? 'Binom API' :
+                                         key === 'disk_space' ? 'Дисковое пространство' :
+                                         key === 'scheduler' ? 'Планировщик' : key;
+                    message += `[ERROR] ${componentName}: ${component.message}\n`;
+                } else if (component.status === 'warning') {
+                    message += `[WARN] ${key}: ${component.message}\n`;
+                }
+            }
+
+            showToast(message.trim(), hasErrors ? 'error' : 'warning');
+        }
+
+    } catch (error) {
+        console.error('Connection test failed:', error);
+        showToast('Ошибка проверки системы: ' + error.message, 'error');
+    } finally {
+        // Восстанавливаем кнопку
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// Перезапуск приложения
+async function restartApplication() {
+    if (!confirm('ВНИМАНИЕ! Приложение будет перезапущено для применения изменений из .env файла.\n\nПриложение будет недоступно несколько секунд. Продолжить?')) return;
+
+    try {
+        const result = await api.post('/system/restart');
+        showToast(result.message || 'Приложение перезапускается...', 'success');
+
+        // Показываем сообщение и начинаем проверять доступность
+        setTimeout(() => {
+            showToast('Ожидание перезапуска... Страница обновится автоматически', 'info');
+            checkServerAvailability();
+        }, 3000);
+
+    } catch (error) {
+        console.error('Error restarting application:', error);
+        showToast('Ошибка перезапуска приложения', 'error');
+    }
+}
+
+// Проверка доступности сервера после перезапуска
+async function checkServerAvailability() {
+    let attempts = 0;
+    const maxAttempts = 20; // Пробуем 20 раз (20 секунд)
+
+    const checkInterval = setInterval(async () => {
+        attempts++;
+
+        try {
+            try {
+                await api.get('/system/health');
+                clearInterval(checkInterval);
+                showToast('Приложение успешно перезапущено! Обновляем страницу...', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } catch (err) {
+                // API недоступен, продолжаем проверять
+            }
+        } catch (error) {
+            // Сервер еще не доступен, продолжаем проверять
+            if (attempts >= maxAttempts) {
+                clearInterval(checkInterval);
+                showToast('Перезапуск занял больше времени, чем ожидалось. Обновите страницу вручную.', 'error');
+            }
+        }
+    }, 1000);
+}
+
+// Очистка кэша
+async function clearCache() {
+    if (!confirm('Очистить кэш системы? Настройки будут сохранены.')) return;
+
+    try {
+        const result = await api.delete('/system/cache');
+        showToast(result.message || 'Кэш успешно очищен', 'success');
+    } catch (error) {
+        console.error('Error clearing cache:', error);
+        showToast('Ошибка очистки кэша', 'error');
+    }
+}
+
+// Очистка кеша браузера (PWA)
+async function clearBrowserCacheSetting() {
+    // Проверяем доступность PWA (HTTPS или localhost)
+    const isPWAAvailable = typeof window.isPWASupported === 'function' && window.isPWASupported();
+
+    if (!isPWAAvailable) {
+        showToast('Функция доступна только через HTTPS или localhost', 'error');
+        console.error('[PWA] Cache clearing requires HTTPS or localhost');
+        return;
+    }
+
+    if (!confirm('Очистить кеш браузера (CSS, JS, изображения)?\n\nСтраница будет перезагружена.')) return;
+
+    try {
+        if (typeof window.clearBrowserCache === 'function') {
+            const success = await window.clearBrowserCache();
+
+            if (success) {
+                showToast('Кеш браузера очищен. Перезагрузка...', 'success');
+
+                // Перезагружаем страницу через 1 секунду
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 1000);
+            } else {
+                showToast('Ошибка очистки кеша браузера', 'error');
+            }
+        } else {
+            showToast('PWA не активен. Кеш браузера не используется.', 'warning');
+        }
+    } catch (error) {
+        console.error('Error clearing browser cache:', error);
+        showToast('Ошибка очистки кеша браузера', 'error');
+    }
+}
+
+// PWA установка - глобальная переменная для prompt
+let deferredPWAPrompt = null;
+
+// Ловим событие beforeinstallprompt
+window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('[PWA] beforeinstallprompt event fired');
+    e.preventDefault();
+    deferredPWAPrompt = e;
+});
+
+// Определение платформы
+function detectPlatform() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const platform = navigator.platform.toLowerCase();
+
+    if (/iphone|ipad|ipod/.test(userAgent)) {
+        return 'ios';
+    }
+    if (/mac/.test(platform) && /safari/.test(userAgent) && !/chrome/.test(userAgent)) {
+        return 'mac-safari';
+    }
+    if (/android/.test(userAgent)) {
+        return 'android';
+    }
+    if (/win/.test(platform)) {
+        return 'windows';
+    }
+    if (/linux/.test(platform)) {
+        return 'linux';
+    }
+    return 'unknown';
+}
+
+// Установка PWA
+async function installPWA() {
+    // Проверяем доступность PWA (HTTPS или localhost)
+    const isPWAAvailable = typeof window.isPWASupported === 'function' && window.isPWASupported();
+
+    if (!isPWAAvailable) {
+        showToast('PWA доступен только через HTTPS или localhost', 'error');
+        console.error('[PWA] Installation requires HTTPS or localhost');
+        return;
+    }
+
+    const platform = detectPlatform();
+    console.log('[PWA] Install clicked. Platform:', platform);
+
+    // iOS и Mac Safari - показываем модалку с инструкцией
+    if (platform === 'ios' || platform === 'mac-safari') {
+        openPWAInstructionsModal(platform);
+        return;
+    }
+
+    // Проверяем доступность prompt
+    if (!deferredPWAPrompt) {
+        // Проверяем, может PWA уже установлен
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            showToast('PWA уже установлен!', 'info');
+            return;
+        }
+
+        // Prompt недоступен - показываем инструкцию для текущего браузера
+        if (/chrome|edge/.test(navigator.userAgent.toLowerCase())) {
+            openPWAInstructionsModal('chrome');
+        } else {
+            openPWAInstructionsModal('unsupported');
+        }
+        return;
+    }
+
+    // Показываем браузерный диалог установки (Windows/Linux/Android Chrome)
+    try {
+        deferredPWAPrompt.prompt();
+
+        const choiceResult = await deferredPWAPrompt.userChoice;
+
+        if (choiceResult.outcome === 'accepted') {
+            console.log('[PWA] User accepted the install prompt');
+            showToast('PWA установлен успешно!', 'success');
+        } else {
+            console.log('[PWA] User dismissed the install prompt');
+        }
+
+        deferredPWAPrompt = null;
+    } catch (error) {
+        console.error('[PWA] Error showing install prompt:', error);
+        showToast('Ошибка установки PWA', 'error');
+    }
+}
+
+// Открыть модалку с инструкциями
+function openPWAInstructionsModal(platform) {
+    const modal = document.getElementById('pwaInstructionsModal');
+    const safariInstructions = document.getElementById('safariInstructions');
+    const chromeInstructions = document.getElementById('chromeInstructions');
+    const unsupportedInstructions = document.getElementById('unsupportedInstructions');
+
+    // Скрываем все инструкции
+    safariInstructions.style.display = 'none';
+    chromeInstructions.style.display = 'none';
+    unsupportedInstructions.style.display = 'none';
+
+    // Показываем нужную инструкцию
+    if (platform === 'ios' || platform === 'mac-safari') {
+        safariInstructions.style.display = 'block';
+    } else if (platform === 'chrome') {
+        chromeInstructions.style.display = 'block';
+    } else {
+        unsupportedInstructions.style.display = 'block';
+    }
+
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+}
+
+// Закрыть модалку с инструкциями
+function closePWAInstructionsModal() {
+    const modal = document.getElementById('pwaInstructionsModal');
+    modal.classList.remove('show');
+    setTimeout(() => modal.style.display = 'none', 300);
+}
+
+// Полная очистка и пересборка данных
+async function rebuildStats() {
+    // Первое предупреждение
+    if (!confirm('⚠️ ВНИМАНИЕ! Эта операция УДАЛИТ ВСЕ данные из БД:\n\n' +
+        '• Все кампании и их статистику\n' +
+        '• Все источники трафика\n' +
+        '• Все офферы\n' +
+        '• Все партнерские сети\n\n' +
+        'После этого будет выполнен сбор данных за 60 дней из Binom.\n' +
+        'Это займет 10-15 минут.\n\n' +
+        'Вы уверены что хотите продолжить?')) {
+        return;
+    }
+
+    // Второе подтверждение
+    if (!confirm('Это действие НЕОБРАТИМО!\n\n' +
+        'Все текущие данные будут удалены.\n' +
+        'Нажмите OK для подтверждения или Cancel для отмены.')) {
+        return;
+    }
+
+    const rebuildBtn = document.getElementById('rebuildStatsBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (!rebuildBtn) return;
+
+    try {
+        // Блокируем кнопку rebuild
+        rebuildBtn.disabled = true;
+
+        // Активируем анимацию кнопки refresh в header (если есть)
+        if (refreshBtn) {
+            refreshBtn.classList.add('rotating');
+            refreshBtn.disabled = true;
+        }
+
+        showToast('Запуск полной очистки и пересборки данных за 60 дней...', 'info');
+
+        // Запускаем полную очистку и пересборку
+        const response = await api.post('/system/data/reset-and-rebuild');
+        const taskId = response.task_id;
+
+        if (!taskId) {
+            showToast('Ошибка: не получен task_id', 'error');
+            rebuildBtn.disabled = false;
+            if (refreshBtn) {
+                refreshBtn.classList.remove('rotating');
+                refreshBtn.disabled = false;
+            }
+            return;
+        }
+
+        showToast('Очистка данных и сбор за 60 дней запущены. Отслеживаем прогресс...', 'success');
+
+        // Отслеживаем прогресс
+        const checkInterval = setInterval(async () => {
+            try {
+                const task = await api.get(`/system/tasks/${taskId}`);
+
+                // Показываем прогресс
+                if (task.progress_message && task.progress > 0) {
+                    console.log(`Task progress: ${task.progress}% - ${task.progress_message}`);
+                }
+
+                // Проверяем статус
+                if (task.status === 'completed') {
+                    clearInterval(checkInterval);
+                    rebuildBtn.disabled = false;
+
+                    // Останавливаем анимацию refresh
+                    if (refreshBtn) {
+                        refreshBtn.classList.remove('rotating');
+                        refreshBtn.disabled = false;
+                    }
+
+                    const result = task.result || {};
+                    showToast(`✅ Полная пересборка завершена! Кампаний: ${result.campaigns || 0}, источников: ${result.traffic_sources || 0}`, 'success');
+
+                    // Перезагружаем страницу через 2 секунды
+                    setTimeout(() => location.reload(), 2000);
+
+                } else if (task.status === 'failed') {
+                    clearInterval(checkInterval);
+                    rebuildBtn.disabled = false;
+
+                    // Останавливаем анимацию refresh
+                    if (refreshBtn) {
+                        refreshBtn.classList.remove('rotating');
+                        refreshBtn.disabled = false;
+                    }
+
+                    showToast(`❌ Ошибка пересборки: ${task.error || 'Неизвестная ошибка'}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Error checking task:', error);
+            }
+        }, 5000); // Проверяем каждые 5 секунд
+
+        // Останавливаем проверку через 2 часа (таймаут)
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            if (rebuildBtn.disabled) {
+                rebuildBtn.disabled = false;
+                if (refreshBtn) {
+                    refreshBtn.classList.remove('rotating');
+                    refreshBtn.disabled = false;
+                }
+                showToast('Проверка прогресса остановлена (таймаут 2 часа)', 'warning');
+            }
+        }, 7200000); // 2 часа
+
+    } catch (error) {
+        console.error('Error during rebuild:', error);
+        showToast('Ошибка при запуске пересборки: ' + (error.message || 'Неизвестная ошибка'), 'error');
+        rebuildBtn.disabled = false;
+        if (refreshBtn) {
+            refreshBtn.classList.remove('rotating');
+            refreshBtn.disabled = false;
+        }
+    }
+}
+
+// Сброс всех настроек
+async function resetAllSettings() {
+    if (!confirm('ВНИМАНИЕ! Это вернет ВСЕ настройки к значениям по умолчанию. Продолжить?')) return;
+
+    try {
+        const result = await api.post('/system/settings/reset');
+        showToast(result.message || 'Настройки сброшены к значениям по умолчанию', 'success');
+        setTimeout(() => location.reload(), 1500);
+    } catch (error) {
+        console.error('Error resetting settings:', error);
+        showToast('Ошибка сброса настроек', 'error');
+    }
+}
+
+// Toast уведомления
+function showToast(message, type = 'info') {
+    // Создаем контейнер для toast если его нет
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000;';
+        document.body.appendChild(container);
+    }
+
+    // Определяем цвет по типу
+    const colors = {
+        'error': '#ef4444',
+        'success': '#10b981',
+        'warning': '#f59e0b',
+        'info': '#3b82f6'
+    };
+
+    // Создаем toast элемент
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background: ${colors[type] || colors.info};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        min-width: 250px;
+        max-width: 400px;
+        animation: slideIn 0.3s ease-out;
+        white-space: pre-line;
+        font-family: monospace;
+        font-size: 13px;
+        line-height: 1.5;
+    `;
+    toast.textContent = message;
+
+    // Добавляем анимацию
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    if (!document.getElementById('toast-animations')) {
+        style.id = 'toast-animations';
+        document.head.appendChild(style);
+    }
+
+    container.appendChild(toast);
+
+    // Автоматически удаляем (5 сек для длинных сообщений, 3 сек для коротких)
+    const duration = message.length > 100 ? 5000 : 3000;
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+
+    // Логируем в консоль
+    const prefixes = {
+        'error': '[ОШИБКА]',
+        'success': '[УСПЕХ]',
+        'warning': '[ПРЕДУПРЕЖДЕНИЕ]',
+        'info': '[ИНФО]'
+    };
+    console.log(`${prefixes[type] || prefixes.info} ${message}`);
+}
+
+// Работа с логами
+async function loadLogs() {
+    const container = document.getElementById('logsContainer');
+    const levelFilter = document.getElementById('logLevelFilter').value;
+    const limit = document.getElementById('logLimitInput').value;
+    const searchInput = document.getElementById('logSearchInput');
+
+    // Очищаем поле поиска при загрузке новых логов
+    if (searchInput) {
+        searchInput.value = '';
+    }
+
+    try {
+        container.innerHTML = '<div class="logs-loading">Загрузка логов...</div>';
+
+        let url = `/api/v1/system/logs?limit=${limit}`;
+        if (levelFilter) {
+            url += `&level=${levelFilter}`;
+        }
+
+        const endpoint = url.replace('/api/v1', '');
+        const data = await api.get(endpoint);
+        const logs = data.logs || [];
+
+        if (logs.length === 0) {
+            container.innerHTML = '<div class="logs-empty">Логов не найдено</div>';
+            return;
+        }
+
+        // Отображаем логи
+        let html = '<div class="logs-list">';
+        logs.forEach(log => {
+            const levelClass = log.level.toLowerCase();
+            html += `
+                <div class="log-entry log-${levelClass}">
+                    <span class="log-level">${log.level}</span>
+                    <span class="log-message">${escapeHtml(log.message)}</span>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        container.innerHTML = '<div class="logs-error">Ошибка загрузки логов</div>';
+        showToast('Ошибка загрузки логов', 'error');
+    }
+}
+
+function filterLogs() {
+    const searchInput = document.getElementById('logSearchInput');
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    const container = document.getElementById('logsContainer');
+    const logEntries = container.querySelectorAll('.log-entry');
+
+    if (!searchTerm) {
+        // Показываем все логи если поиск пустой
+        logEntries.forEach(entry => {
+            entry.style.display = '';
+        });
+        // Удаляем сообщение "ничего не найдено" если оно есть
+        const existingNoResults = container.querySelector('.logs-no-results');
+        if (existingNoResults) {
+            existingNoResults.remove();
+        }
+        return;
+    }
+
+    // Фильтруем логи
+    let visibleCount = 0;
+    logEntries.forEach(entry => {
+        const message = entry.textContent.toLowerCase();
+        if (message.includes(searchTerm)) {
+            entry.style.display = '';
+            visibleCount++;
+        } else {
+            entry.style.display = 'none';
+        }
+    });
+
+    // Если ничего не найдено, показываем сообщение
+    const existingNoResults = container.querySelector('.logs-no-results');
+    if (visibleCount === 0 && !existingNoResults) {
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.className = 'logs-no-results';
+        noResultsDiv.style.cssText = 'padding: 20px; text-align: center; color: var(--text-secondary);';
+        noResultsDiv.textContent = `По запросу "${searchInput.value}" ничего не найдено`;
+        container.appendChild(noResultsDiv);
+    } else if (visibleCount > 0 && existingNoResults) {
+        existingNoResults.remove();
+    }
+}
+
+async function clearLogs() {
+    if (!confirm('ВНИМАНИЕ! Текущий лог-файл будет заархивирован и создан новый пустой файл. Продолжить?')) return;
+
+    try {
+        const result = await api.delete('/system/logs');
+        showToast(result.message || 'Логи успешно очищены', 'success');
+
+        // Перезагружаем логи
+        setTimeout(loadLogs, 1000);
+
+    } catch (error) {
+        console.error('Error clearing logs:', error);
+        showToast('Ошибка очистки логов', 'error');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Инициализация логов при загрузке страницы (если открыта вкладка logs)
+document.addEventListener('DOMContentLoaded', function() {
+    // Загружаем логи только если открыта вкладка logs
+    if (settingsState.currentTab === 'logs') {
+        loadLogs();
+    }
+
+    // Обработчики для логов
+    document.getElementById('loadLogsBtn')?.addEventListener('click', loadLogs);
+    document.getElementById('clearLogsBtn')?.addEventListener('click', clearLogs);
+    document.getElementById('logLevelFilter')?.addEventListener('change', loadLogs);
+    document.getElementById('logSearchInput')?.addEventListener('input', filterLogs);
+});
+
+// Загружаем данные при переключении на вкладки logs и backup
+const originalSwitchTab = switchTab;
+switchTab = function(tabName) {
+    originalSwitchTab(tabName);
+    if (tabName === 'logs') {
+        loadLogs();
+    } else if (tabName === 'backup') {
+        loadCurrentVersion();
+        loadBackups();
+    }
+};
+
+// Управление темой
+function initTheme() {
+    const themeToggle = document.getElementById('themeToggle');
+    const themeLabel = document.querySelector('.theme-toggle');
+
+    if (!themeToggle || !themeLabel) {
+        console.error('Theme toggle elements not found');
+        return;
+    }
+
+    // Загружаем сохраненную тему из localStorage (по умолчанию темная)
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const isDark = savedTheme === 'dark';
+
+    console.log('Init theme:', savedTheme, 'isDark:', isDark);
+
+    // Применяем тему
+    document.body.classList.toggle('dark-theme', isDark);
+    themeToggle.checked = isDark;
+
+    // Функция переключения темы
+    function toggleTheme() {
+        const newIsDark = !themeToggle.checked;
+        themeToggle.checked = newIsDark;
+
+        console.log('Toggle theme to:', newIsDark ? 'dark' : 'light');
+
+        document.body.classList.toggle('dark-theme', newIsDark);
+        localStorage.setItem('theme', newIsDark ? 'dark' : 'light');
+    }
+
+    // Клик по label (работает автоматически благодаря CSS)
+    themeToggle.addEventListener('change', function() {
+        const isDark = this.checked;
+        console.log('Theme changed to:', isDark ? 'dark' : 'light');
+        document.body.classList.toggle('dark-theme', isDark);
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+}
+
+// Инициализируем тему при загрузке
+document.addEventListener('DOMContentLoaded', initTheme);
+
+// ============================================================================
+// BACKUP TAB (UPDATES & BACKUPS)
+// ============================================================================
+
+// Загрузка текущей версии
+async function loadCurrentVersion() {
+    try {
+        const data = await api.post('/system/update/check');
+        const versionEl = document.getElementById('currentVersion');
+
+        if (versionEl && data.current_version) {
+            versionEl.textContent = data.current_version;
+        }
+    } catch (error) {
+        console.error('Error loading current version:', error);
+        const versionEl = document.getElementById('currentVersion');
+        if (versionEl) {
+            versionEl.textContent = 'Ошибка загрузки';
+        }
+    }
+}
+
+// Проверка обновлений через GitHub API
+async function checkGithubUpdates() {
+    const btn = document.getElementById('checkGithubUpdatesBtn');
+    const originalHTML = btn.innerHTML;
+    const resultBox = document.getElementById('updateResultBox');
+
+    btn.disabled = true;
+    btn.innerHTML = '<img src="/static/icons/update-EDEDED.png" alt="" style="width: 16px; height: 16px; animation: spin 1s linear infinite;"> Проверка...';
+
+    try {
+        const data = await api.post('/system/update/check');
+
+        console.log('Update check response:', data);
+
+        // Показываем текущую версию
+        const versionEl = document.getElementById('currentVersion');
+        if (versionEl && data.current_version) {
+            versionEl.textContent = data.current_version;
+        }
+
+        // Формируем результат
+        let resultHTML = '';
+
+        if (data.status === 'ok' && data.updates_available) {
+            // Доступна новая версия
+            resultHTML = `
+                <div style="padding: 1rem; background: var(--success-bg); border: 1px solid var(--success-border); border-radius: 8px;">
+                    <div style="display: flex; align-items: start; gap: 1rem;">
+                        <img src="/static/icons/success-10b981.png" alt="" style="width: 24px; height: 24px; flex-shrink: 0;">
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 0.5rem 0; color: var(--success-color);">Доступна новая версия!</h3>
+                            <p style="margin: 0 0 1rem 0;">
+                                <strong>Текущая:</strong> ${data.current_version}<br>
+                                <strong>Новая:</strong> ${data.latest_version}
+                                ${data.release_name ? `<br><strong>Название:</strong> ${escapeHtml(data.release_name)}` : ''}
+                            </p>
+                            ${data.release_notes ? `
+                                <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 4px; font-size: 13px;">
+                                    <strong>Что нового:</strong><br>
+                                    <pre style="margin: 0.5rem 0 0 0; white-space: pre-wrap; font-family: inherit;">${escapeHtml(data.release_notes)}</pre>
+                                </div>
+                            ` : ''}
+                            <div style="margin-top: 1rem;">
+                                <a href="${data.release_url}" target="_blank" style="color: var(--primary-color); text-decoration: underline;">
+                                    Посмотреть полное описание на GitHub
+                                </a>
+                            </div>
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-primary); border-radius: 4px;">
+                                <strong>Как обновить:</strong>
+                                <pre style="margin: 0.5rem 0 0 0; font-size: 13px;"><code>./scripts/upgrade.sh</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            showToast(`Доступна новая версия: ${data.latest_version}`, 'success');
+        } else if (data.status === 'ok' && !data.updates_available) {
+            // Система актуальна
+            resultHTML = `
+                <div style="padding: 1rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <img src="/static/icons/check-10b981.png" alt="" style="width: 24px; height: 24px;">
+                        <div>
+                            <strong>Система актуальна</strong><br>
+                            <small style="color: var(--text-secondary);">Установлена последняя версия: ${data.current_version}</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+            showToast('Система актуальна', 'success');
+        } else if (data.status === 'rate_limit') {
+            // Превышен лимит запросов
+            resultHTML = `
+                <div style="padding: 1rem; background: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: 8px;">
+                    <div style="display: flex; align-items: start; gap: 1rem;">
+                        <img src="/static/icons/warning-f59e0b.png" alt="" style="width: 24px; height: 24px; flex-shrink: 0;">
+                        <div>
+                            <strong>Превышен лимит запросов к GitHub API</strong><br>
+                            <small>Попробуйте через час или проверьте вручную:</small><br>
+                            <a href="${data.manual_check_url}" target="_blank" style="color: var(--primary-color); text-decoration: underline;">
+                                ${data.manual_check_url}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            showToast('Превышен лимит запросов к GitHub API', 'warning');
+        } else if (data.status === 'no_releases') {
+            // Нет релизов на GitHub
+            resultHTML = `
+                <div style="padding: 1rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <img src="/static/icons/info-A0AFFF.png" alt="" style="width: 24px; height: 24px;">
+                        <div>
+                            <strong>Релизы пока не опубликованы</strong><br>
+                            <small>Проверьте позже: <a href="${data.manual_check_url}" target="_blank" style="color: var(--primary-color);">${data.manual_check_url}</a></small>
+                        </div>
+                    </div>
+                </div>
+            `;
+            showToast('Релизы на GitHub пока не опубликованы', 'info');
+        } else {
+            // Ошибка
+            resultHTML = `
+                <div style="padding: 1rem; background: var(--error-bg); border: 1px solid var(--error-border); border-radius: 8px;">
+                    <div style="display: flex; align-items: start; gap: 1rem;">
+                        <img src="/static/icons/critical-ef4444.png" alt="" style="width: 24px; height: 24px; flex-shrink: 0;">
+                        <div>
+                            <strong>Ошибка проверки обновлений</strong><br>
+                            <small>${escapeHtml(data.message)}</small><br>
+                            ${data.manual_check_url ? `<a href="${data.manual_check_url}" target="_blank" style="color: var(--primary-color); text-decoration: underline;">Проверить вручную</a>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            showToast('Ошибка проверки обновлений', 'error');
+        }
+
+        // Показываем результат
+        resultBox.innerHTML = resultHTML;
+        resultBox.style.display = 'block';
+
+    } catch (error) {
+        console.error('Error checking updates:', error);
+
+        const resultBox = document.getElementById('updateResultBox');
+        resultBox.innerHTML = `
+            <div style="padding: 1rem; background: var(--error-bg); border: 1px solid var(--error-border); border-radius: 8px;">
+                <div style="display: flex; align-items: start; gap: 1rem;">
+                    <img src="/static/icons/critical-ef4444.png" alt="" style="width: 24px; height: 24px; flex-shrink: 0;">
+                    <div>
+                        <strong>Ошибка проверки обновлений</strong><br>
+                        <small>${escapeHtml(error.message || 'Неизвестная ошибка')}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        resultBox.style.display = 'block';
+
+        showToast('Ошибка проверки обновлений', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+// Загрузка списка бэкапов
+async function loadBackups() {
+    const container = document.getElementById('backupList');
+
+    try {
+        container.innerHTML = '<div class="logs-loading">Загрузка...</div>';
+
+        const data = await api.get('/system/backup/list');
+
+        if (data.total === 0) {
+            container.innerHTML = '<div class="logs-empty">Бэкапов пока нет</div>';
+            return;
+        }
+
+        // Отображаем список бэкапов
+        let html = '<div style="display: flex; flex-direction: column; gap: 0.75rem;">';
+
+        data.backups.forEach(backup => {
+            const createdDate = new Date(backup.created_at);
+            const now = new Date();
+            const hoursAgo = Math.floor((now - createdDate) / (1000 * 60 * 60));
+
+            let timeAgoStr;
+            if (hoursAgo < 1) {
+                timeAgoStr = 'только что';
+            } else if (hoursAgo < 24) {
+                timeAgoStr = `${hoursAgo} ч. назад`;
+            } else {
+                const daysAgo = Math.floor(hoursAgo / 24);
+                timeAgoStr = `${daysAgo} дн. назад`;
+            }
+
+            html += `
+                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
+                        <div style="flex: 1;">
+                            <div style="font-family: monospace; font-size: 13px; margin-bottom: 0.5rem;">
+                                <img src="/static/icons/database-EDEDED.png" alt="" style="width: 14px; height: 14px; vertical-align: middle;">
+                                ${backup.filename}
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">
+                                Размер: ${backup.size_formatted} | Создан: ${timeAgoStr} (${createdDate.toLocaleString()})
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn-secondary" onclick="downloadBackup('${backup.filename}')" style="padding: 0.5rem 1rem;">
+                                <img src="/static/icons/export-EDEDED.png" alt="" style="width: 14px; height: 14px;">
+                                Скачать
+                            </button>
+                            <button class="btn-danger" onclick="deleteBackup('${backup.filename}')" style="padding: 0.5rem 1rem;">
+                                <img src="/static/icons/critical-ef4444.png" alt="" style="width: 14px; height: 14px;">
+                                Удалить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error loading backups:', error);
+        container.innerHTML = '<div class="logs-error">Ошибка загрузки бэкапов</div>';
+        showToast('Ошибка загрузки списка бэкапов', 'error');
+    }
+}
+
+// Создание бэкапа
+async function createBackup() {
+    const btn = document.getElementById('createBackupBtn');
+    const originalHTML = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<img src="/static/icons/database-EDEDED.png" alt="" style="width: 16px; height: 16px; animation: spin 1s linear infinite;"> Создание...';
+
+    try {
+        const data = await api.post('/system/backup/create');
+
+        showToast(`Бэкап успешно создан: ${data.backup_file}`, 'success');
+
+        // Обновляем список
+        setTimeout(loadBackups, 500);
+
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        showToast(`Ошибка создания бэкапа: ${error.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+// Скачивание бэкапа
+async function downloadBackup(filename) {
+    try {
+        showToast(`Скачивание ${filename}...`, 'info');
+
+        // Получаем токен (должен совпадать с ключом в api.js)
+        const token = localStorage.getItem('access_token');
+
+        // Делаем запрос с токеном
+        const response = await fetch(`/api/v1/system/backup/download/${filename}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Получаем blob
+        const blob = await response.blob();
+
+        // Создаём ссылку для скачивания
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+
+        // Очищаем
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showToast(`Файл ${filename} скачан`, 'success');
+
+    } catch (error) {
+        console.error('Error downloading backup:', error);
+        showToast(`Ошибка скачивания: ${error.message}`, 'error');
+    }
+}
+
+// Удаление бэкапа
+async function deleteBackup(filename) {
+    if (!confirm(`Удалить бэкап ${filename}?`)) {
+        return;
+    }
+
+    try {
+        await api.delete(`/system/backup/${filename}`);
+
+        showToast(`Бэкап ${filename} удален`, 'success');
+
+        // Обновляем список
+        setTimeout(loadBackups, 500);
+
+    } catch (error) {
+        console.error('Error deleting backup:', error);
+        showToast(`Ошибка удаления бэкапа: ${error.message}`, 'error');
+    }
+}
+
+// Удаление старых бэкапов
+async function cleanOldBackups() {
+    if (!confirm('Удалить все бэкапы кроме последних 7?\n\nЭто действие необратимо.')) {
+        return;
+    }
+
+    const btn = document.getElementById('cleanOldBackupsBtn');
+    const originalHTML = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<img src="/static/icons/update-EDEDED.png" alt="" style="width: 16px; height: 16px; animation: spin 1s linear infinite;"> Очистка...';
+
+    try {
+        const data = await api.delete('/system/backup/old?keep=7');
+
+        if (data.deleted === 0) {
+            showToast('Нет старых бэкапов для удаления', 'info');
+        } else {
+            showToast(`Удалено ${data.deleted} старых бэкапов`, 'success');
+
+            // Обновляем список
+            setTimeout(loadBackups, 500);
+        }
+
+    } catch (error) {
+        console.error('Error cleaning old backups:', error);
+        showToast(`Ошибка очистки бэкапов: ${error.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+// Инициализация вкладки обновлений и бэкапов
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработчики для кнопок обновлений
+    document.getElementById('checkGithubUpdatesBtn')?.addEventListener('click', checkGithubUpdates);
+
+    // Обработчики для кнопок бэкапов
+    document.getElementById('createBackupBtn')?.addEventListener('click', createBackup);
+    document.getElementById('cleanOldBackupsBtn')?.addEventListener('click', cleanOldBackups);
+
+    // Инициализация модалки PWA инструкций
+    const pwaModal = document.getElementById('pwaInstructionsModal');
+    if (pwaModal) {
+        // Закрытие по клику на фон
+        pwaModal.addEventListener('click', (e) => {
+            if (e.target === pwaModal) {
+                closePWAInstructionsModal();
+            }
+        });
+
+        // Закрытие по Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && pwaModal.classList.contains('show')) {
+                closePWAInstructionsModal();
+            }
+        });
+    }
+
+    // Проверка доступности PWA и скрытие кнопок если нужно
+    checkPWAAvailability();
+});
+
+// Проверка доступности PWA и управление видимостью кнопок
+function checkPWAAvailability() {
+    const installPWABtn = document.getElementById('installPWABtn');
+    const clearBrowserCacheBtn = document.getElementById('clearBrowserCacheBtn');
+    const clearBrowserCacheOperation = clearBrowserCacheBtn?.closest('.operation-item');
+
+    // Локальная проверка HTTPS (не зависит от загрузки main.js)
+    const isSecureContext = window.location.protocol === 'https:' ||
+                           window.location.hostname === 'localhost' ||
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname === '[::1]';
+
+    const hasServiceWorker = 'serviceWorker' in navigator;
+    const hasCacheAPI = 'caches' in window;
+
+    const isPWAAvailable = isSecureContext && hasServiceWorker && hasCacheAPI;
+
+    // Проверка - запущено ли приложение в PWA режиме (standalone)
+    const isRunningAsPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                          window.navigator.standalone === true || // iOS Safari
+                          document.referrer.includes('android-app://'); // Android TWA
+
+    console.log('[Settings] PWA availability check:', {
+        protocol: window.location.protocol,
+        hostname: window.location.hostname,
+        isSecureContext,
+        hasServiceWorker,
+        hasCacheAPI,
+        isPWAAvailable,
+        isRunningAsPWA
+    });
+
+    // Скрываем кнопку "Установить PWA" если:
+    // 1. PWA недоступен (HTTP)
+    // 2. Уже работаем в PWA режиме
+    if (!isPWAAvailable || isRunningAsPWA) {
+        if (installPWABtn) {
+            installPWABtn.style.display = 'none';
+            if (isRunningAsPWA) {
+                console.log('[Settings] Install PWA button hidden (already running as PWA)');
+            } else {
+                console.log('[Settings] Install PWA button hidden (requires HTTPS)');
+            }
+        }
+    }
+
+    // Скрываем секцию "Очистить кеш браузера" только если PWA недоступен (HTTP)
+    if (!isPWAAvailable) {
+        if (clearBrowserCacheOperation) {
+            clearBrowserCacheOperation.style.display = 'none';
+            console.log('[Settings] Clear browser cache section hidden (requires HTTPS)');
+        }
+    }
+}
+
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Модули Аналитики - Binom Assistant{% endblock %}
+{% block page_title %}Модули Аналитики{% endblock %}
+
+{% block content %}
+<div class="modules-container">
+    <!-- Хедер с поиском и фильтрами -->
+    <div class="modules-header">
+        <div class="modules-search-bar">
+            <div class="search-wrapper">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input type="text" id="moduleSearch" placeholder="Поиск по названию или описанию модуля..." autocomplete="off">
+            </div>
+
+            <div class="filter-wrapper">
+                <select id="categoryFilter" class="filter-select">
+                    <option value="all">Все категории</option>
+                    <option value="critical_alerts">Критические алерты</option>
+                    <option value="trend_analysis">Анализ трендов</option>
+                    <option value="stability">Стабильность</option>
+                    <option value="predictive">Предиктивная аналитика</option>
+                    <option value="problem_detection">Детекция проблем</option>
+                    <option value="opportunities">Поиск возможностей</option>
+                    <option value="segmentation">Группировка</option>
+                    <option value="portfolio">Портфельная аналитика</option>
+                    <option value="sources_offers">Источники и офферы</option>
+                </select>
+
+                <select id="statusFilter" class="filter-select">
+                    <option value="all">Все модули</option>
+                    <option value="active">Активные</option>
+                    <option value="inactive">Неактивные</option>
+                </select>
+
+                <label class="compact-view-toggle">
+                    <input type="checkbox" id="compactViewToggle">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-text">Компактный вид</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Блок избранного -->
+    <div id="favoritesSection" class="favorites-section" style="display: none;">
+        <div class="favorites-header">
+            <h2>Избранное</h2>
+            <span class="favorites-count" id="favoritesCount">0</span>
+        </div>
+        <div id="favoritesContent" class="favorites-grid"></div>
+    </div>
+
+    <!-- Контейнер для модулей -->
+    <div id="modulesContent">
+        <!-- Скелетон для загрузки -->
+        <div class="modules-loading">
+            <div class="loader"></div>
+            <p>Загрузка модулей...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Module Registry -->
+<script src="/static/js/modules/_registry.js?v=1"></script>
+
+<!-- Individual Modules (auto-register) -->
+<script src="/static/js/modules/bleeding_detector.js?v=3"></script>
+<script src="/static/js/modules/zero_approval_alert.js?v=3"></script>
+<script src="/static/js/modules/spend_spike_monitor.js?v=4"></script>
+<script src="/static/js/modules/waste_campaign_finder.js?v=6"></script>
+<script src="/static/js/modules/traffic_quality_crash.js?v=4"></script>
+<script src="/static/js/modules/squeezed_offer.js?v=1"></script>
+<script src="/static/js/modules/microtrend_scanner.js?v=3"></script>
+<script src="/static/js/modules/momentum_tracker.js?v=2"></script>
+<script src="/static/js/modules/recovery_detector.js?v=1"></script>
+<script src="/static/js/modules/acceleration_monitor.js?v=1"></script>
+<script src="/static/js/modules/trend_reversal_finder.js?v=1"></script>
+<script src="/static/js/modules/volatility_calculator.js?v=1"></script>
+<script src="/static/js/modules/consistency_scorer.js?v=1"></script>
+<script src="/static/js/modules/reliability_index.js?v=1"></script>
+<script src="/static/js/modules/performance_stability.js?v=1"></script>
+<script src="/static/js/modules/roi_forecast.js?v=1"></script>
+<script src="/static/js/modules/profitability_horizon.js?v=1"></script>
+<script src="/static/js/modules/approval_rate_predictor.js?v=1"></script>
+<script src="/static/js/modules/campaign_lifecycle_stage.js?v=1"></script>
+<script src="/static/js/modules/revenue_projection.js?v=1"></script>
+<script src="/static/js/modules/sleepy_campaign_finder.js?v=1"></script>
+<script src="/static/js/modules/cpl_margin_monitor.js?v=1"></script>
+<script src="/static/js/modules/conversion_drop_alert.js?v=1"></script>
+<script src="/static/js/modules/approval_delay_impact.js?v=1"></script>
+<script src="/static/js/modules/zombie_campaign_detector.js?v=1"></script>
+<script src="/static/js/modules/source_fatigue_detector.js?v=1"></script>
+<script src="/static/js/modules/hidden_gems_finder.js?v=1"></script>
+<script src="/static/js/modules/sudden_winner_detector.js?v=1"></script>
+<script src="/static/js/modules/scaling_candidates.js?v=1"></script>
+<script src="/static/js/modules/breakout_alert.js?v=1"></script>
+<script src="/static/js/modules/smart_consolidator.js?v=1"></script>
+<script src="/static/js/modules/performance_segmenter.js?v=1"></script>
+<script src="/static/js/modules/source_group_matrix.js?v=1"></script>
+<script src="/static/js/modules/portfolio_health_index.js?v=5"></script>
+<script src="/static/js/modules/diversification_score.js?v=6"></script>
+<script src="/static/js/modules/budget_optimizer.js?v=5"></script>
+<script src="/static/js/modules/risk_assessment.js?v=5"></script>
+<script src="/static/js/modules/total_performance_tracker.js?v=1"></script>
+<script src="/static/js/modules/offer_profitability_ranker.js?v=6"></script>
+<script src="/static/js/modules/source_quality_scorer.js?v=1"></script>
+<script src="/static/js/modules/network_performance_monitor.js?v=5"></script>
+<script src="/static/js/modules/offer_lifecycle_tracker.js?v=1"></script>
+
+<!-- Main modules list script -->
+<script src="/static/js/modules.js?v=20"></script>
+{% endblock %}

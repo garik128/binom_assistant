@@ -1,0 +1,1095 @@
+/**
+ * Основные стили Binom Assistant
+ */
+
+@import url('variables.css');
+
+/* ========== Сброс и базовые стили ========== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* ========== Красивый скроллбар ========== */
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    border: 3px solid var(--bg-primary);
+    transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--border-hover);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: var(--accent-primary);
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-tertiary) var(--bg-primary);
+}
+
+/* Светлая тема - скроллбар для html и body */
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+    background: #d6d6d6;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+    background: #bcbcbc;
+}
+
+html::-webkit-scrollbar-thumb:active,
+body::-webkit-scrollbar-thumb:active {
+    background: #1b5cff;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+    background: #f5f5f7;
+}
+
+/* Темная тема - скроллбар для html и body */
+html.dark-theme-init::-webkit-scrollbar-thumb,
+body.dark-theme::-webkit-scrollbar-thumb {
+    background: #565656;
+}
+
+html.dark-theme-init::-webkit-scrollbar-thumb:hover,
+body.dark-theme::-webkit-scrollbar-thumb:hover {
+    background: #3a3a3a;
+}
+
+html.dark-theme-init::-webkit-scrollbar-thumb:active,
+body.dark-theme::-webkit-scrollbar-thumb:active {
+    background: #1b5cff;
+}
+
+html.dark-theme-init::-webkit-scrollbar-track,
+body.dark-theme::-webkit-scrollbar-track {
+    background: #565656;
+}
+
+/* Firefox - темная тема */
+html.dark-theme-init,
+body.dark-theme,
+body.dark-theme * {
+    scrollbar-color: #565656 #1e1e1e;
+}
+
+/* ========== Лоадер ========== */
+
+.loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: var(--z-loader);
+    transition: opacity var(--transition-normal);
+}
+
+.loader-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loader {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ========== Контейнер приложения ========== */
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    margin-left: 0; /* Убрали отступ для сайдбара */
+    transition: margin-left var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+}
+
+.content-wrapper {
+    padding: 2rem;
+    flex: 1;
+}
+
+/* ========== Хедер ========== */
+
+.app-header {
+    height: var(--header-height);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+}
+
+.header-left,
+.header-center,
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-left {
+    min-width: 50px;
+}
+
+.header-center {
+    flex: 1;
+    justify-content: center;
+    max-width: 700px;
+}
+
+.header-right {
+    min-width: 180px;
+    justify-content: flex-end;
+    position: relative;
+}
+
+/* Визуальный разделитель между навигацией и правой частью */
+.header-right::before {
+    content: '';
+    position: absolute;
+    left: -1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 32px;
+    background: var(--border-color);
+    display: none;
+}
+
+/* Показываем разделитель только на десктопе */
+@media (min-width: 769px) {
+    .header-right::before {
+        display: block;
+    }
+}
+
+.menu-toggle {
+    display: none; /* Скрыт на десктопе, показывается только на мобильных */
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+}
+
+.menu-toggle:hover {
+    background: var(--bg-hover);
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: none; /* Скрываем на десктопе */
+}
+
+/* Показываем page-title только на мобильных */
+@media (max-width: 768px) {
+    .page-title {
+        display: block;
+    }
+}
+
+/* Логотип приложения */
+.app-logo {
+    display: none; /* Скрыт на мобильных */
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin: 0;
+    padding: 0;
+    width: 36px;
+    height: 36px;
+}
+
+.app-logo:hover {
+    opacity: 0.8;
+}
+
+.app-logo svg {
+    flex-shrink: 0;
+}
+
+.app-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+/* Показываем логотип только на десктопе */
+@media (min-width: 769px) {
+    .app-logo {
+        display: block;
+    }
+}
+
+/* Навигация в хедере */
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    justify-content: space-between;
+}
+
+.header-nav .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 1.25rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 500;
+    position: relative;
+    letter-spacing: 0.01em;
+}
+
+body.dark-theme .header-nav .nav-item:hover {
+    color: white;
+    background: var(--bg-hover);
+}
+
+body:not(.dark-theme) .header-nav .nav-item:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+body.dark-theme .header-nav .nav-item.active {
+    color: white;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+body:not(.dark-theme) .header-nav .nav-item.active {
+    color: var(--text-primary);
+    background: rgba(27, 92, 255, 0.1);
+}
+
+.header-nav .nav-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+}
+
+.header-nav .nav-text {
+    white-space: nowrap;
+    font-size: 1rem;
+}
+
+.header-nav .nav-badge {
+    background: var(--accent-danger);
+    color: white;
+    font-size: 0.625rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 10px;
+    font-weight: 600;
+    margin-left: 0.25rem;
+}
+
+/* Стили для nav-item в header-right (настройки) */
+.header-right .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 1.25rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 500;
+    position: relative;
+    letter-spacing: 0.01em;
+}
+
+body.dark-theme .header-right .nav-item:hover {
+    color: white;
+    background: var(--bg-hover);
+}
+
+body:not(.dark-theme) .header-right .nav-item:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+body.dark-theme .header-right .nav-item.active {
+    color: white;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+body:not(.dark-theme) .header-right .nav-item.active {
+    color: var(--text-primary);
+    background: rgba(27, 92, 255, 0.1);
+}
+
+.header-right .nav-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+}
+
+.header-right .nav-text {
+    white-space: nowrap;
+    font-size: 1rem;
+}
+
+/* Кнопки хедера */
+.icon-btn {
+    position: relative;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.625rem;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+}
+
+.icon-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.icon-btn:active {
+    transform: scale(0.95);
+}
+
+.icon-btn svg {
+    display: block;
+}
+
+.notification-badge {
+    position: absolute;
+    top: 4px;
+    right: 1px;
+    background: var(--accent-danger);
+    color: white;
+    font-size: 0.625rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.last-update {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+}
+
+.last-update-label {
+    color: var(--text-muted);
+}
+
+.last-update-time {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* На больших экранах делаем компактнее */
+@media (min-width: 769px) {
+    .last-update {
+        font-size: 0.75rem;
+    }
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    cursor: help;
+    transition: all var(--transition-fast);
+}
+
+.status-online {
+    background: var(--status-online);
+    box-shadow: 0 0 8px var(--status-online);
+}
+
+.status-warning {
+    background: var(--accent-warning);
+    box-shadow: 0 0 8px var(--accent-warning);
+}
+
+.status-error {
+    background: var(--accent-danger);
+    box-shadow: 0 0 8px var(--accent-danger);
+}
+
+/* ========== Сайдбар удален - навигация в header ========== */
+
+/* ========== Кнопки ========== */
+
+.btn-primary,
+.btn-secondary {
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+}
+
+.btn-primary {
+    background: var(--accent-primary);
+    color: white;
+    box-shadow: 0 0 0 transparent;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+    box-shadow: var(--shadow-glow);
+}
+
+.btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-hover);
+}
+
+.btn-success {
+    background: var(--accent-success);
+    color: white;
+    border: none;
+}
+
+.btn-success:hover {
+    background: #00a06d;
+    box-shadow: 0 0 15px rgba(0, 184, 123, 0.3);
+}
+
+/* ========== Карточки ========== */
+
+.section-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.section-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+/* Статистические карточки */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 1rem 1.25rem;
+    transition: all var(--transition-fast);
+}
+
+.stat-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* ========== Skeleton screens ========== */
+
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-tertiary);
+}
+
+.skeleton::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.05),
+        transparent
+    );
+    animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+    to { left: 100%; }
+}
+
+.skeleton-line {
+    height: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-title {
+    width: 40%;
+}
+
+.skeleton-value {
+    width: 60%;
+    height: 2rem;
+}
+
+.skeleton-subtitle {
+    width: 50%;
+}
+
+/* ========== Toast уведомления ========== */
+
+.toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.toast {
+    min-width: 300px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    box-shadow: var(--shadow-lg);
+    animation: toast-slide-in 0.3s ease;
+}
+
+@keyframes toast-slide-in {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toast.success {
+    border-left: 4px solid var(--accent-success);
+}
+
+.toast.error {
+    border-left: 4px solid var(--accent-danger);
+}
+
+.toast.warning {
+    border-left: 4px solid var(--accent-warning);
+}
+
+.toast.info {
+    border-left: 4px solid var(--accent-info);
+}
+
+/* ========== Утилиты ========== */
+
+.text-success { color: var(--accent-success) !important; }
+.text-danger { color: var(--accent-danger) !important; }
+.text-warning { color: var(--accent-warning) !important; }
+.text-info { color: var(--accent-info) !important; }
+.text-muted { color: var(--text-muted) !important; }
+
+.bg-success { background: var(--accent-success) !important; }
+.table-container .bg-success {color: #ffffff;}
+.bg-danger { background: var(--accent-danger) !important; }
+.bg-warning { background: var(--accent-warning) !important; }
+
+.hidden { display: none !important; }
+.visible { display: block !important; }
+
+/* Анимация вращения для кнопки refresh */
+.rotating svg {
+    animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ========== Дополнительные улучшения для десктопа ========== */
+
+/* Плавное появление подчеркивания у активного пункта */
+.header-nav .nav-item::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: var(--accent-primary);
+    border-radius: 2px 2px 0 0;
+    transition: width var(--transition-fast);
+}
+
+.header-nav .nav-item.active::after,
+.header-nav .nav-item:hover::after {
+    width: 60%;
+}
+
+/* Улучшенный hover для nav-item */
+@media (min-width: 769px) {
+    .header-nav .nav-item {
+        overflow: hidden;
+    }
+
+    .header-nav .nav-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg,
+            rgba(59, 130, 246, 0.05) 0%,
+            rgba(160, 175, 255, 0.05) 100%);
+        opacity: 0;
+        transition: opacity var(--transition-fast);
+    }
+
+    .header-nav .nav-item:hover::before {
+        opacity: 1;
+    }
+
+    .header-nav .nav-item.active::before {
+        opacity: 1;
+        background: linear-gradient(135deg,
+            rgba(59, 130, 246, 0.1) 0%,
+            rgba(160, 175, 255, 0.1) 100%);
+    }
+}
+
+/* Более заметное уведомление */
+.notification-badge {
+    animation: pulse-notification 2s ease-in-out infinite;
+}
+
+@keyframes pulse-notification {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.9;
+    }
+}
+
+/* Более плавный hover для иконок */
+@media (min-width: 769px) {
+    .icon-btn {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .icon-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: var(--bg-hover);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: width 0.3s ease, height 0.3s ease;
+        z-index: -1;
+    }
+
+    .icon-btn:hover::before {
+        width: 100%;
+        height: 100%;
+    }
+}
+
+/* Subtle shadow для header на десктопе */
+@media (min-width: 769px) {
+    .app-header {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* ================================================
+   NOTIFICATIONS DROPDOWN
+   ================================================ */
+
+.notifications-wrapper {
+    position: relative;
+}
+
+.notifications-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 400px;
+    max-height: 500px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+
+.notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.notifications-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.notifications-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.notification-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+    background-color: rgba(108, 99, 255, 0.1);
+}
+
+.notification-item.unread {
+    background-color: rgba(108, 99, 255, 0.05);
+}
+
+.notification-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.notification-icon.critical {
+    background-color: rgba(239, 68, 68, 0.2);
+}
+
+.notification-icon.warning {
+    background-color: rgba(245, 158, 11, 0.2);
+}
+
+.notification-icon.info {
+    background-color: rgba(160, 175, 255, 0.2);
+}
+
+.notification-icon img {
+    width: 18px;
+    height: 18px;
+}
+
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.notification-message {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.notifications-loading,
+.notifications-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.notifications-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.btn-primary-small {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--accent-primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: background-color 0.2s;
+}
+
+.btn-primary-small:hover {
+    background: var(--accent-primary-hover);
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    color: var(--accent-primary);
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0;
+}
+
+.btn-text:hover {
+    color: var(--accent-primary-hover);
+}
+
+/* Badge скрытие когда 0 */
+.notification-badge[data-count="0"] {
+    display: none !important;
+}
+
+/* ========== Footer ========== */
+
+.app-footer {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-top: auto;
+}
+
+.footer-left,
+.footer-right {
+    display: flex;
+    align-items: center;
+}
+
+.footer-disclaimer {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.footer-copyright {
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    margin: 0;
+}
+
+/* Responsive footer */
+@media (max-width: 768px) {
+    .app-footer {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .footer-left,
+    .footer-right {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ========== Alerts Page Styles ========== */
+
+/* Alert actions buttons */
+.alert-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-action {
+    padding: 6px 12px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn-hide {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.btn-hide:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.btn-delete {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+/* Filters layout improvements */
+.alerts-filters {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Alert item animation */
+.alert-item {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Stat cards hover effect */
+.alerts-stats .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Danger button variant */
+.btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+}

@@ -1,0 +1,2367 @@
+/**
+ * JavaScript для AI чата
+ */
+
+// Состояние чата
+const chatState = {
+    currentChatId: null,  // ID текущего чата из БД
+    messages: [],
+    chats: [],  // Список всех чатов
+    filteredChats: [],  // Чаты после фильтрации/поиска
+    displayedCount: 10,  // Количество отображаемых чатов
+    chatsPerPage: 10,    // Чатов на одну "страницу"
+    isTyping: false,
+    abortController: null,  // Контроллер для отмены запросов
+    templates: [],
+    displayedTemplatesCount: 10,  // Количество отображаемых шаблонов
+    templatesPerPage: 10,         // Шаблонов на одну "страницу"
+    editingTemplateId: null,
+    allModels: [],
+    favoriteModels: [],
+    currentModel: 'openai/gpt-4o-mini',
+    agentCategory: '',  // '' = обычный чат, или ID категории (critical_alerts, trend_analysis, и т.д.)
+    availableCategories: {}  // Доступные категории агентов
+};
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    initChat();
+});
+
+
+// ========== Функции для работы с БД чатами ==========
+
+// Загрузка списка чатов
+async function loadChats() {
+    try {
+        const response = await fetch('/api/v1/chat/list');
+        if (!response.ok) throw new Error('Failed to load chats');
+
+        const data = await response.json();
+        chatState.chats = data.chats || [];
+
+        // Если нет текущего чата - создаем новый
+        if (!chatState.currentChatId && chatState.chats.length === 0) {
+            await createNewChat();
+        } else if (!chatState.currentChatId && chatState.chats.length > 0) {
+            // Загружаем последний чат
+            await switchToChat(chatState.chats[0].id);
+        }
+
+        renderChatsList();
+    } catch (error) {
+        console.error('Error loading chats:', error);
+    }
+}
+
+// Отображение списка чатов
+// Отображение списка чатов с пагинацией
+function renderChatsList() {
+    const chatsList = document.getElementById('chatsList');
+    const showMoreBtn = document.getElementById('showMoreChatsBtn');
+    if (!chatsList) return;
+
+    chatsList.innerHTML = '';
+
+    // Используем filteredChats если есть (поиск), иначе все чаты
+    const chatsToDisplay = chatState.filteredChats.length > 0 ? chatState.filteredChats : chatState.chats;
+    const displayChats = chatsToDisplay.slice(0, chatState.displayedCount);
+
+    if (displayChats.length === 0) {
+        chatsList.innerHTML = '<div class="no-chats">Нет чатов</div>';
+        if (showMoreBtn) showMoreBtn.style.display = 'none';
+        return;
+    }
+
+    displayChats.forEach(chat => {
+        const chatItem = document.createElement('div');
+        chatItem.className = `chat-item${chat.id === chatState.currentChatId ? ' active' : ''}`;
+        chatItem.dataset.chatId = chat.id;
+
+        chatItem.innerHTML = `
+            <div class="chat-item-content" onclick="switchToChat(${chat.id})">
+                <div class="chat-item-title" ondblclick="editChatTitle(${chat.id}, event)">${escapeHtml(chat.title)}</div>
+                <div class="chat-item-meta">${formatChatDate(chat.updated_at)} | ${chat.message_count} сообщ.</div>
+            </div>
+            <button class="chat-item-delete" onclick="deleteChat(${chat.id}, event)" title="Удалить чат">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+            </button>
+        `;
+
+        chatsList.appendChild(chatItem);
+    });
+
+    // Показываем/скрываем кнопку "Показать еще"
+    if (showMoreBtn) {
+        if (chatsToDisplay.length > chatState.displayedCount) {
+            showMoreBtn.style.display = 'flex';
+        } else {
+            showMoreBtn.style.display = 'none';
+        }
+    }
+
+    // Показываем/скрываем кнопку "Удалить все"
+    const deleteAllBtn = document.getElementById('deleteAllChatsBtn');
+    if (deleteAllBtn) {
+        if (chatState.chats.length > 0) {
+            deleteAllBtn.style.display = 'flex';
+        } else {
+            deleteAllBtn.style.display = 'none';
+        }
+    }
+}
+
+// Показать еще чатов
+function showMoreChats() {
+    chatState.displayedCount += chatState.chatsPerPage;
+    renderChatsList();
+}
+
+// Показать еще шаблонов
+function showMoreTemplates() {
+    chatState.displayedTemplatesCount += chatState.templatesPerPage;
+    renderTemplates();
+}
+
+// Поиск по чатам
+function searchChats(query) {
+    const lowerQuery = query.toLowerCase().trim();
+
+    if (!lowerQuery) {
+        // Если поиск пустой - показываем все чаты
+        chatState.filteredChats = [];
+        chatState.displayedCount = chatState.chatsPerPage;
+        renderChatsList();
+        return;
+    }
+
+    // Фильтруем чаты по title
+    chatState.filteredChats = chatState.chats.filter(chat =>
+        chat.title.toLowerCase().includes(lowerQuery)
+    );
+
+    // Сбрасываем счетчик отображаемых
+    chatState.displayedCount = chatState.chatsPerPage;
+    renderChatsList();
+}
+
+// Создание нового чата
+async function createNewChat() {
+    try {
+        const response = await fetch('/api/v1/chat/new', {
+            method: 'POST'
+        });
+
+        if (!response.ok) throw new Error('Failed to create chat');
+
+        const newChat = await response.json();
+        chatState.chats.unshift(newChat);
+
+        // Переключаемся на новый чат
+        await switchToChat(newChat.id);
+        renderChatsList();
+
+        // Фокус на поле ввода
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) messageInput.focus();
+
+    } catch (error) {
+        console.error('Error creating chat:', error);
+        alert('Ошибка при создании чата');
+    }
+}
+
+// Переключение на другой чат
+async function switchToChat(chatId) {
+    try {
+        const response = await fetch(`/api/v1/chat/${chatId}`);
+        if (!response.ok) throw new Error('Failed to load chat');
+
+        const chatData = await response.json();
+        chatState.currentChatId = chatId;
+
+        // Очищаем состояние сообщений перед загрузкой новых
+        chatState.messages = [];
+
+        // Очищаем область сообщений
+        const chatMessages = document.getElementById('chatMessages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '';
+
+            // Если нет сообщений - показываем приветствие
+            if (!chatData.messages || chatData.messages.length === 0) {
+                showWelcomeMessage();
+            } else {
+                // Отображаем сообщения из БД
+                // addMessage сам добавит в chatState.messages в правильном формате
+                chatData.messages.forEach(msg => {
+                    addMessage(msg.role === 'user' ? 'user' : 'ai', msg.content, false);
+                });
+            }
+        }
+
+        // Обновляем активный чат в списке
+        renderChatsList();
+
+        // Обновляем состояние контролов
+        updateControlsState();
+
+    } catch (error) {
+        console.error('Error switching chat:', error);
+        alert('Ошибка при загрузке чата');
+    }
+}
+
+// Показать приветственное сообщение для нового чата
+function showWelcomeMessage() {
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages) return;
+
+    // Определяем название агента
+    let agentName = 'Обычный чат';
+    let agentDescription = 'Общение с AI без использования модулей аналитики';
+    let agentIcon = '💬';
+
+    if (chatState.agentCategory && chatState.agentCategory !== '') {
+        const category = chatState.availableCategories[chatState.agentCategory];
+        if (category) {
+            agentName = category.name;
+            agentDescription = category.description;
+            agentIcon = category.icon || '🤖';
+        }
+    }
+
+    const welcomeHTML = `
+        <div class="welcome-message">
+            <div class="welcome-icon" style="font-size: 3rem;">${agentIcon}</div>
+            <h2>Выбран режим: ${agentName}</h2>
+            <p>${agentDescription}</p>
+            <p style="margin-top: 1rem; color: var(--text-muted);">Задайте свой вопрос или опишите задачу...</p>
+        </div>
+    `;
+
+    chatMessages.innerHTML = welcomeHTML;
+}
+
+// Удаление чата
+async function deleteChat(chatId, event) {
+    if (event) event.stopPropagation();
+
+    if (!confirm('Удалить этот чат?')) return;
+
+    try {
+        const response = await fetch(`/api/v1/chat/${chatId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete chat');
+
+        // Удаляем из списка
+        chatState.chats = chatState.chats.filter(c => c.id !== chatId);
+
+        // Если удалили текущий чат
+        if (chatState.currentChatId === chatId) {
+            if (chatState.chats.length > 0) {
+                await switchToChat(chatState.chats[0].id);
+            } else {
+                await createNewChat();
+            }
+        }
+
+        renderChatsList();
+
+    } catch (error) {
+        console.error('Error deleting chat:', error);
+        alert('Ошибка при удалении чата');
+    }
+}
+
+// Удаление всех чатов
+async function deleteAllChats() {
+    if (!confirm('Вы уверены что хотите очистить всю историю?')) return;
+
+    try {
+        const response = await fetch('/api/v1/chat/all', {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete all chats');
+
+        const data = await response.json();
+
+        // Очищаем список чатов
+        chatState.chats = [];
+        chatState.filteredChats = [];
+        chatState.displayedCount = chatState.chatsPerPage;
+
+        // Создаем новый чат
+        await createNewChat();
+
+        renderChatsList();
+
+        console.log(`Deleted ${data.total_deleted} chats`);
+
+    } catch (error) {
+        console.error('Error deleting all chats:', error);
+        alert('Ошибка при удалении всех чатов');
+    }
+}
+
+// Сохранение сообщений в БД
+async function saveMessagesToDB(messages) {
+    if (!chatState.currentChatId) return;
+
+    try {
+        const response = await fetch(`/api/v1/chat/${chatState.currentChatId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(messages)
+        });
+
+        if (!response.ok) throw new Error('Failed to save messages');
+
+        // Перезагружаем список чатов для обновления счетчиков
+        await loadChats();
+
+    } catch (error) {
+        console.error('Error saving messages:', error);
+    }
+}
+
+// Редактирование title чата
+async function editChatTitle(chatId, event) {
+    if (event) event.stopPropagation();
+    const chat = chatState.chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    const newTitle = prompt('Введите новое название чата:', chat.title);
+    if (!newTitle || newTitle === chat.title) return;
+
+    try {
+        const response = await fetch(`/api/v1/chat/${chatId}/title?title=${encodeURIComponent(newTitle)}`, {
+            method: 'PUT'
+        });
+
+        if (!response.ok) throw new Error('Failed to update title');
+
+        const updated = await response.json();
+        const chatIndex = chatState.chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) {
+            chatState.chats[chatIndex] = updated;
+        }
+
+        renderChatsList();
+
+    } catch (error) {
+        console.error('Error updating chat title:', error);
+        alert('Ошибка при обновлении названия');
+    }
+}
+
+// Вспомогательные функции
+function formatChatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (days === 0) return 'Сегодня';
+    if (days === 1) return 'Вчера';
+    if (days < 7) return `${days} дн. назад`;
+
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+async function initChat() {
+    // Сворачивание/разворачивание сайдбара в компактный режим
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
+    const chatSidebar = document.getElementById('chatSidebar');
+
+    // Загрузка сохраненного состояния сайдбара из localStorage
+    const savedSidebarState = localStorage.getItem('sidebarCompact');
+    if (savedSidebarState === 'true') {
+        chatSidebar.classList.add('compact');
+    }
+
+    // Функция сохранения состояния
+    function saveSidebarState() {
+        const isCompact = chatSidebar.classList.contains('compact');
+        localStorage.setItem('sidebarCompact', isCompact.toString());
+    }
+
+    // Основная кнопка toggle - переключает компактный режим
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            chatSidebar.classList.toggle('compact');
+            saveSidebarState();
+        });
+    }
+
+    if (sidebarToggleMobile) {
+        sidebarToggleMobile.addEventListener('click', () => {
+            chatSidebar.classList.toggle('compact');
+            saveSidebarState();
+        });
+    }
+
+    // Клик по заголовкам секций (templates, history) раскрывает сайдбар
+    const sectionHeaders = document.querySelectorAll('.section-header[data-section]');
+    sectionHeaders.forEach(header => {
+        header.addEventListener('click', (e) => {
+            // Если сайдбар в компактном режиме - раскрываем его
+            if (chatSidebar.classList.contains('compact')) {
+                // Проверяем что клик не по кнопке добавления шаблона
+                if (!e.target.closest('.btn-add-template')) {
+                    chatSidebar.classList.remove('compact');
+                    saveSidebarState();
+                }
+            }
+        });
+    });
+
+    // Закрытие сайдбара при клике вне его на мобильных
+    if (window.innerWidth <= 768) {
+        document.addEventListener('click', (e) => {
+            if (!chatSidebar.contains(e.target) &&
+                !sidebarToggleMobile.contains(e.target) &&
+                !chatSidebar.classList.contains('compact')) {
+                chatSidebar.classList.add('compact');
+                saveSidebarState();
+            }
+        });
+    }
+
+    // Отправка сообщений
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    if (sendBtn) {
+        sendBtn.addEventListener('click', () => {
+            sendMessage();
+        });
+    }
+
+    if (chatInput) {
+        // Автоматическое изменение высоты textarea
+        chatInput.addEventListener('input', () => {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 200) + 'px';
+        });
+
+        // Отправка по Enter (без Shift)
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+
+    // Новый чат
+    const newChatBtn = document.getElementById('newChatBtn');
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', () => {
+            startNewChat();
+        });
+    }
+
+    // Примеры промптов
+    const examplePrompts = document.querySelectorAll('.example-prompt');
+    examplePrompts.forEach(prompt => {
+        prompt.addEventListener('click', () => {
+            const promptText = prompt.getAttribute('data-prompt');
+            chatInput.value = promptText;
+            sendMessage();
+        });
+    });
+
+    // Переключение между чатами
+    const chatItems = document.querySelectorAll('.chat-item');
+    chatItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            // Игнорируем клики на кнопке удаления
+            if (e.target.closest('.chat-item-delete')) {
+                return;
+            }
+
+            const chatId = item.getAttribute('data-chat-id');
+            switchChat(chatId);
+        });
+    });
+
+    // Удаление чатов
+    const deleteButtons = document.querySelectorAll('.chat-item-delete');
+    deleteButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const chatItem = btn.closest('.chat-item');
+            const chatId = chatItem.getAttribute('data-chat-id');
+            deleteChat(chatId);
+        });
+    });
+
+    // Поиск по чатам
+    const chatSearchInput = document.getElementById('chatSearchInput');
+    if (chatSearchInput) {
+        chatSearchInput.addEventListener('input', (e) => {
+            searchChats(e.target.value);
+        });
+    }
+    
+    // Кнопка "Показать еще"
+    const showMoreChatsBtn = document.getElementById('showMoreChatsBtn');
+    if (showMoreChatsBtn) {
+        showMoreChatsBtn.addEventListener('click', showMoreChats);
+    }
+
+    // Кнопка "Удалить все"
+    const deleteAllChatsBtn = document.getElementById('deleteAllChatsBtn');
+    if (deleteAllChatsBtn) {
+        deleteAllChatsBtn.addEventListener('click', deleteAllChats);
+    }
+
+    // Копирование сообщений
+    setupMessageActions();
+
+    // Инициализация шаблонов
+    initTemplates();
+
+    // Инициализация выбора моделей
+    initModelSelector();
+
+    // Инициализация выбора агента
+    initAgentSelector();
+
+    // Загрузка списка чатов из БД
+    await loadChats();
+
+    // Инициализация состояния контролов
+    updateControlsState();
+}
+
+// Отправка сообщения
+async function sendMessage() {
+    const chatInput = document.getElementById('chatInput');
+    const message = chatInput.value.trim();
+
+    // Если нажали во время генерации - останавливаем
+    if (chatState.isTyping) {
+        stopGeneration();
+        return;
+    }
+
+    if (!message) {
+        return;
+    }
+
+    // Создаем чат, если его еще нет
+    if (!chatState.currentChatId) {
+        await createNewChat();
+    }
+
+    // Добавляем сообщение пользователя
+    addMessage('user', message);
+
+    // Очищаем поле ввода
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+
+    // Скрываем приветственное сообщение
+    const welcomeMessage = document.querySelector('.welcome-message');
+    if (welcomeMessage) {
+        welcomeMessage.style.display = 'none';
+    }
+
+    // Показываем индикатор печатания
+    showTypingIndicator();
+
+    // Меняем кнопку на Stop
+    setSendButtonToStop();
+
+    // Создаем AbortController для возможности отмены
+    chatState.abortController = new AbortController();
+
+    try {
+        // Получаем выбранную модель и настройки
+        const modelSelect = document.getElementById('modelSelect');
+        const contextLimit = document.getElementById('contextLimit');
+        const selectedModel = modelSelect ? modelSelect.value : 'openai/gpt-4o-mini';
+        const contextMessages = contextLimit ? parseInt(contextLimit.value) : 10;
+        const useModulesMode = chatState.agentCategory !== '';  // Если категория выбрана - используем модули
+
+        // Формируем историю сообщений для отправки
+        const allHistory = chatState.messages
+            .slice(0, -1) // Исключаем последнее (только что добавленное) сообщение
+            .map(msg => ({
+                role: msg.sender === 'user' ? 'user' : 'assistant',
+                content: msg.text
+            }));
+
+        // Ограничиваем историю согласно настройке контекста
+        const chatHistory = allHistory.slice(-contextMessages);
+
+        // Отправляем запрос к API с поддержкой отмены
+        const response = await fetch('/api/v1/chat/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                chat_history: chatHistory,
+                model: selectedModel,
+                context_limit: contextMessages,
+                use_modules: useModulesMode,
+                modules_category: chatState.agentCategory || 'critical_alerts'
+            }),
+            signal: chatState.abortController.signal
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Скрываем индикатор
+        hideTypingIndicator();
+
+        // Возвращаем кнопку в нормальное состояние
+        setSendButtonToNormal();
+
+        // Добавляем ответ AI
+        addMessage('ai', data.response);
+
+        // Обновляем информацию о токенах
+        updateTokenInfo(data.usage);
+
+        // Сохраняем сообщения в БД
+        if (chatState.currentChatId) {
+            await saveMessagesToDB([
+                {role: 'user', content: message},
+                {role: 'assistant', content: data.response}
+            ]);
+        }
+
+        // Очищаем abortController
+        chatState.abortController = null;
+
+    } catch (error) {
+        // Если запрос был отменен - не показываем ошибку
+        if (error.name === 'AbortError') {
+            console.log('Запрос был отменен пользователем');
+            return;
+        }
+
+        console.error('Ошибка при отправке сообщения:', error);
+        hideTypingIndicator();
+        setSendButtonToNormal();
+        addMessage('ai', 'Извините, произошла ошибка при получении ответа. Пожалуйста, попробуйте еще раз.');
+        chatState.abortController = null;
+    }
+}
+
+// Добавление сообщения в чат
+function addMessage(sender, text, saveToDB = true) {
+    const chatMessages = document.getElementById('chatMessages');
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}-message`;
+
+    // Аватар
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'message-avatar';
+
+    if (sender === 'user') {
+        avatarDiv.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+        `;
+    } else {
+        avatarDiv.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+        `;
+    }
+
+    // Контент сообщения
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'message-text';
+    textDiv.innerHTML = formatMessageText(text);
+    // Сохраняем оригинальный markdown для копирования
+    textDiv.setAttribute('data-original-markdown', text);
+
+    contentDiv.appendChild(textDiv);
+
+    // Действия для AI сообщений
+    if (sender === 'ai') {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'message-actions';
+        actionsDiv.innerHTML = `
+            <button class="message-action-btn" onclick="copyMessage(this)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                </svg>
+                Копировать
+            </button>
+        `;
+        contentDiv.appendChild(actionsDiv);
+    }
+
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+
+    chatMessages.appendChild(messageDiv);
+
+    // Прокрутка вниз
+    scrollToBottom();
+
+    // Сохраняем сообщение в состояние
+    chatState.messages.push({
+        sender,
+        text,
+        timestamp: new Date()
+    });
+
+    // Обновляем состояние контролов (блокируем если есть сообщения)
+    updateControlsState();
+}
+
+// Форматирование текста сообщения с поддержкой полного markdown
+function formatMessageText(text) {
+    // Настройка marked для подсветки кода
+    marked.setOptions({
+        highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+                try {
+                    return hljs.highlight(code, { language: lang }).value;
+                } catch (err) {
+                    console.error('Highlight error:', err);
+                }
+            }
+            return hljs.highlightAuto(code).value;
+        },
+        breaks: true,
+        gfm: true,
+        tables: true,
+        headerIds: true,
+        mangle: false,
+        pedantic: false
+    });
+
+    // Парсим markdown
+    return marked.parse(text);
+}
+
+// Показ индикатора печатания
+function showTypingIndicator() {
+    const chatMessages = document.getElementById('chatMessages');
+
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message ai-message';
+    typingDiv.id = 'typingIndicator';
+
+    typingDiv.innerHTML = `
+        <div class="message-avatar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+        </div>
+        <div class="message-content">
+            <div class="typing-indicator">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            </div>
+        </div>
+    `;
+
+    chatMessages.appendChild(typingDiv);
+    chatState.isTyping = true;
+    scrollToBottom();
+}
+
+// Скрытие индикатора печатания
+function hideTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+    chatState.isTyping = false;
+}
+
+// Изменить кнопку отправки на Stop
+function setSendButtonToStop() {
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn) {
+        sendBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="6" y="6" width="12" height="12" rx="1"/>
+            </svg>
+        `;
+        sendBtn.title = 'Остановить генерацию';
+        sendBtn.classList.add('stop-mode');
+    }
+}
+
+// Вернуть кнопку отправки в обычное состояние
+function setSendButtonToNormal() {
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn) {
+        sendBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+        `;
+        sendBtn.title = 'Отправить (Enter)';
+        sendBtn.classList.remove('stop-mode');
+    }
+}
+
+// Остановить генерацию
+function stopGeneration() {
+    if (chatState.abortController) {
+        chatState.abortController.abort();
+        chatState.abortController = null;
+    }
+    hideTypingIndicator();
+    setSendButtonToNormal();
+    addMessage('ai', '⚠️ Генерация остановлена пользователем.');
+}
+
+// Прокрутка вниз
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Обновление информации о токенах
+function updateTokenInfo(usage) {
+    const tokenInfo = document.getElementById('tokenInfo');
+    const tokenCount = document.getElementById('tokenCount');
+
+    if (tokenInfo && tokenCount && usage) {
+        // Если токены 0 (режим агента) - скрываем badge
+        if (usage.total_tokens === 0) {
+            tokenInfo.style.display = 'none';
+        } else {
+            tokenCount.textContent = usage.total_tokens;
+            tokenInfo.style.display = 'flex';
+            tokenInfo.title = `Prompt: ${usage.prompt_tokens} | Completion: ${usage.completion_tokens} | Total: ${usage.total_tokens}`;
+        }
+    }
+}
+
+// Новый чат
+// Новая версия startNewChat - вызывает createNewChat из БД
+async function startNewChat() {
+    await createNewChat();
+}
+
+// Новая версия switchChat - вызывает switchToChat из БД
+async function switchChat(chatId) {
+    await switchToChat(chatId);
+}
+
+// Переключение чата
+
+// Удаление чата
+
+// Поиск по чатам
+
+// Копирование сообщения
+function copyMessage(button) {
+    const messageText = button.closest('.message-content').querySelector('.message-text');
+    // Копируем оригинальный markdown, если доступен, иначе текст
+    const markdown = messageText.getAttribute('data-original-markdown') || messageText.textContent;
+
+    navigator.clipboard.writeText(markdown).then(() => {
+        // Показываем уведомление
+        const originalText = button.innerHTML;
+        button.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            Скопировано
+        `;
+
+        setTimeout(() => {
+            button.innerHTML = originalText;
+        }, 2000);
+    }).catch(err => {
+        console.error('Ошибка копирования:', err);
+    });
+}
+
+// Настройка действий с сообщениями
+function setupMessageActions() {
+    // Обработчики уже добавлены через onclick в HTML
+}
+
+// ============================================
+// УПРАВЛЕНИЕ ШАБЛОНАМИ
+// ============================================
+
+// Инициализация шаблонов
+function initTemplates() {
+    // Загружаем шаблоны из LocalStorage
+    loadTemplates();
+
+    // Рендерим шаблоны
+    renderTemplates();
+
+    // Кнопка добавления шаблона
+    const addTemplateBtn = document.getElementById('addTemplateBtn');
+    if (addTemplateBtn) {
+        addTemplateBtn.addEventListener('click', () => {
+            openTemplateModal();
+        });
+    }
+
+    // Кнопки модального окна
+    const templateModal = document.getElementById('templateModal');
+    const closeModalBtn = document.getElementById('closeTemplateModal');
+    const cancelModalBtn = document.getElementById('cancelTemplateModal');
+    const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeTemplateModal);
+    }
+
+    if (cancelModalBtn) {
+        cancelModalBtn.addEventListener('click', closeTemplateModal);
+    }
+
+    if (saveTemplateBtn) {
+        saveTemplateBtn.addEventListener('click', saveTemplate);
+    }
+
+    // Закрытие модального окна при клике вне его
+    if (templateModal) {
+        templateModal.addEventListener('click', (e) => {
+            if (e.target === templateModal) {
+                closeTemplateModal();
+            }
+        });
+    }
+
+    // Выбор иконки
+    const iconOptions = document.querySelectorAll('.icon-option');
+    iconOptions.forEach(icon => {
+        icon.addEventListener('click', () => {
+            selectTemplateIcon(icon);
+        });
+    });
+}
+
+// Загрузка шаблонов из БД
+async function loadTemplates() {
+    try {
+        const response = await fetch('/api/v1/templates');
+        if (!response.ok) throw new Error('Failed to load templates');
+
+        const data = await response.json();
+        chatState.templates = data.templates || [];
+        renderTemplates();
+    } catch (error) {
+        console.error('Error loading templates:', error);
+        chatState.templates = [];
+    }
+}
+
+// Рендеринг списка шаблонов с пагинацией
+function renderTemplates() {
+    const templatesList = document.getElementById('templatesList');
+    const showMoreBtn = document.getElementById('showMoreTemplatesBtn');
+    if (!templatesList) return;
+
+    // Очищаем список
+    templatesList.innerHTML = '';
+
+    // API уже возвращает шаблоны отсортированными от новых к старым
+    // Но на всякий случай сортируем ещё раз
+    const sortedTemplates = [...chatState.templates].sort((a, b) => {
+        return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    // Отображаем только первые N шаблонов
+    const displayTemplates = sortedTemplates.slice(0, chatState.displayedTemplatesCount);
+
+    if (displayTemplates.length === 0) {
+        templatesList.innerHTML = '<div class="empty-state">Нет сохраненных шаблонов</div>';
+        if (showMoreBtn) showMoreBtn.style.display = 'none';
+        return;
+    }
+
+    // Добавляем каждый шаблон
+    displayTemplates.forEach(template => {
+        const templateItem = createTemplateElement(template);
+        templatesList.appendChild(templateItem);
+    });
+
+    // Показываем/скрываем кнопку "Показать еще"
+    if (showMoreBtn) {
+        if (sortedTemplates.length > chatState.displayedTemplatesCount) {
+            showMoreBtn.style.display = 'flex';
+        } else {
+            showMoreBtn.style.display = 'none';
+        }
+    }
+}
+
+// Создание элемента шаблона
+function createTemplateElement(template) {
+    const item = document.createElement('div');
+    item.className = 'template-item';
+    item.setAttribute('data-template-id', template.id);
+
+    // Иконка
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'template-icon';
+    iconDiv.innerHTML = getTemplateIconSVG(template.icon);
+
+    // Контент
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'template-content';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'template-title';
+    titleDiv.textContent = template.title;
+
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'template-preview';
+    previewDiv.textContent = template.prompt.length > 60
+        ? template.prompt.substring(0, 60) + '...'
+        : template.prompt;
+
+    contentDiv.appendChild(titleDiv);
+    contentDiv.appendChild(previewDiv);
+
+    // Кнопка удаления
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'template-delete';
+    deleteBtn.title = 'Удалить';
+    deleteBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+    `;
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteTemplate(template.id);
+    });
+
+    // Клик по шаблону - использовать его
+    item.addEventListener('click', () => {
+        useTemplate(template.id);
+    });
+
+    item.appendChild(iconDiv);
+    item.appendChild(contentDiv);
+    item.appendChild(deleteBtn);
+
+    return item;
+}
+
+// Получение SVG иконки по типу
+function getTemplateIconSVG(iconType) {
+    const icons = {
+        chart: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>',
+        grid: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>',
+        alert: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+        file: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>',
+        search: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>',
+        settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'
+    };
+
+    return icons[iconType] || icons['file'];
+}
+
+// Открытие модального окна
+function openTemplateModal(templateId = null) {
+    const modal = document.getElementById('templateModal');
+    const modalTitle = document.getElementById('templateModalTitle');
+    const templateNameInput = document.getElementById('templateName');
+    const templatePromptInput = document.getElementById('templatePrompt');
+
+    if (!modal) return;
+
+    // Если редактируем существующий шаблон
+    if (templateId) {
+        const template = chatState.templates.find(t => t.id === templateId);
+        if (template) {
+            chatState.editingTemplateId = templateId;
+            modalTitle.textContent = 'Редактировать шаблон';
+            templateNameInput.value = template.title;
+            templatePromptInput.value = template.prompt;
+
+            // Выбираем иконку
+            const iconOption = document.querySelector(`[data-icon="${template.icon}"]`);
+            if (iconOption) {
+                selectTemplateIcon(iconOption);
+            }
+        }
+    } else {
+        // Новый шаблон
+        chatState.editingTemplateId = null;
+        modalTitle.textContent = 'Новый шаблон';
+        templateNameInput.value = '';
+        templatePromptInput.value = '';
+
+        // Выбираем первую иконку по умолчанию
+        const firstIcon = document.querySelector('.icon-option');
+        if (firstIcon) {
+            selectTemplateIcon(firstIcon);
+        }
+    }
+
+    modal.style.display = 'flex';
+}
+
+// Закрытие модального окна
+function closeTemplateModal() {
+    const modal = document.getElementById('templateModal');
+    if (modal) {
+        modal.style.display = 'none';
+        chatState.editingTemplateId = null;
+    }
+}
+
+// Выбор иконки
+function selectTemplateIcon(iconElement) {
+    // Убираем выбор со всех иконок
+    document.querySelectorAll('.icon-option').forEach(icon => {
+        icon.classList.remove('selected');
+    });
+
+    // Выбираем текущую
+    iconElement.classList.add('selected');
+}
+
+// Сохранение шаблона
+async function saveTemplate() {
+    const templateNameInput = document.getElementById('templateName');
+    const templatePromptInput = document.getElementById('templatePrompt');
+    const selectedIcon = document.querySelector('.icon-option.selected');
+
+    const name = templateNameInput.value.trim();
+    const prompt = templatePromptInput.value.trim();
+    const icon = selectedIcon ? selectedIcon.getAttribute('data-icon') : 'file';
+
+    // Валидация
+    if (!name) {
+        alert('Пожалуйста, введите название шаблона');
+        templateNameInput.focus();
+        return;
+    }
+
+    if (!prompt) {
+        alert('Пожалуйста, введите текст промпта');
+        templatePromptInput.focus();
+        return;
+    }
+
+    try {
+        // Сохраняем или обновляем
+        if (chatState.editingTemplateId) {
+            // Обновляем существующий шаблон
+            const response = await fetch(`/api/v1/templates/${chatState.editingTemplateId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: name,
+                    prompt: prompt,
+                    icon: icon
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to update template');
+
+            const updated = await response.json();
+
+            // Обновляем в локальном состоянии
+            const index = chatState.templates.findIndex(t => t.id === chatState.editingTemplateId);
+            if (index !== -1) {
+                chatState.templates[index] = updated;
+            }
+        } else {
+            // Создаем новый шаблон
+            const response = await fetch('/api/v1/templates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: name,
+                    prompt: prompt,
+                    icon: icon
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to create template');
+
+            const newTemplate = await response.json();
+            chatState.templates.unshift(newTemplate); // Добавляем в начало
+        }
+
+        // Перерисовываем список
+        renderTemplates();
+
+        // Закрываем модальное окно
+        closeTemplateModal();
+
+    } catch (error) {
+        console.error('Error saving template:', error);
+        alert('Ошибка при сохранении шаблона');
+    }
+}
+
+// Удаление шаблона
+async function deleteTemplate(templateId) {
+    if (!confirm('Вы уверены, что хотите удалить этот шаблон?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/templates/${templateId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete template');
+
+        // Удаляем из локального состояния
+        chatState.templates = chatState.templates.filter(t => t.id !== templateId);
+
+        // Перерисовываем список
+        renderTemplates();
+
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        alert('Ошибка при удалении шаблона');
+    }
+}
+
+// Использование шаблона
+function useTemplate(templateId) {
+    const template = chatState.templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    // Вставляем промпт в поле ввода
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+        chatInput.value = template.prompt;
+        chatInput.focus();
+
+        // Автоматически подстраиваем высоту
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 200) + 'px';
+    }
+
+    // На мобильных закрываем сайдбар
+    if (window.innerWidth <= 768) {
+        const chatSidebar = document.getElementById('chatSidebar');
+        if (chatSidebar) {
+            chatSidebar.classList.add('collapsed');
+        }
+    }
+}
+
+// ============================================
+// УПРАВЛЕНИЕ ВЫБОРОМ МОДЕЛЕЙ
+// ============================================
+
+// Топовые провайдеры с поддержкой tools
+const TOP_PROVIDERS = ['openai', 'anthropic', 'google', 'x-ai', 'deepseek'];
+
+// Инициализация выбора моделей
+async function initModelSelector() {
+    // Загружаем избранные модели из localStorage
+    loadFavoriteModels();
+
+    // Рендерим селект
+    renderModelSelect();
+
+    // Кнопка открытия модального окна
+    const selectModelBtn = document.getElementById('selectModelBtn');
+    if (selectModelBtn) {
+        selectModelBtn.addEventListener('click', openModelModal);
+    }
+
+    // Кнопки закрытия модального окна
+    const closeModelModal = document.getElementById('closeModelModal');
+    const closeModelModalBtn = document.getElementById('closeModelModalBtn');
+
+    if (closeModelModal) {
+        closeModelModal.addEventListener('click', closeModelModalFunc);
+    }
+
+    if (closeModelModalBtn) {
+        closeModelModalBtn.addEventListener('click', closeModelModalFunc);
+    }
+
+    // Закрытие по клику на overlay
+    const modelModal = document.getElementById('modelModal');
+    if (modelModal) {
+        modelModal.addEventListener('click', (e) => {
+            if (e.target.classList.contains('model-modal-overlay') || e.target === modelModal) {
+                closeModelModalFunc();
+            }
+        });
+    }
+
+    // Поиск моделей
+    const modelSearchInput = document.getElementById('modelSearchInput');
+    if (modelSearchInput) {
+        modelSearchInput.addEventListener('input', (e) => {
+            searchModels(e.target.value);
+        });
+    }
+
+    // Обработчик изменения селекта
+    const modelSelect = document.getElementById('modelSelect');
+    if (modelSelect) {
+        modelSelect.addEventListener('change', (e) => {
+            chatState.currentModel = e.target.value;
+            localStorage.setItem('selectedModel', e.target.value);
+            updateModelPrice();
+        });
+    }
+
+    // Загружаем модели в фоне для отображения цены
+    try {
+        const response = await fetch('/api/v1/chat/models');
+        if (response.ok) {
+            const data = await response.json();
+            chatState.allModels = filterTopModels(data.models);
+
+            // Обновляем селект и цену после загрузки моделей
+            renderModelSelect();
+            updateModelPrice();
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки моделей при инициализации:', error);
+        // Всё равно пытаемся обновить цену
+        updateModelPrice();
+    }
+}
+
+// Загрузка избранных моделей из localStorage
+function loadFavoriteModels() {
+    const stored = localStorage.getItem('favoriteModels');
+    const selectedModel = localStorage.getItem('selectedModel');
+
+    if (stored) {
+        try {
+            chatState.favoriteModels = JSON.parse(stored);
+        } catch (e) {
+            console.error('Ошибка загрузки избранных моделей:', e);
+            chatState.favoriteModels = getDefaultFavoriteModels();
+        }
+    } else {
+        chatState.favoriteModels = getDefaultFavoriteModels();
+    }
+
+    // Восстанавливаем выбранную модель
+    if (selectedModel && chatState.favoriteModels.find(m => m.id === selectedModel)) {
+        chatState.currentModel = selectedModel;
+    }
+}
+
+// Сохранение избранных моделей в localStorage
+function saveFavoriteModels() {
+    localStorage.setItem('favoriteModels', JSON.stringify(chatState.favoriteModels));
+}
+
+// Дефолтные избранные модели
+function getDefaultFavoriteModels() {
+    return [
+        {
+            id: 'openai/gpt-4o-mini',
+            name: 'GPT-4o Mini',
+            description: 'Fast and affordable model',
+            provider: 'OpenAI'
+        }
+    ];
+}
+
+// Обновление отображения цены текущей модели в шапке
+function updateModelPrice() {
+    const modelPriceInfo = document.getElementById('modelPriceInfo');
+    const modelPrice = document.getElementById('modelPrice');
+
+    if (!modelPriceInfo || !modelPrice) return;
+
+    // Находим текущую модель
+    const currentModel = chatState.allModels.find(m => m.id === chatState.currentModel);
+
+    if (currentModel && currentModel.pricing) {
+        const priceText = formatModelPrice(currentModel.pricing);
+        modelPrice.textContent = priceText;
+        modelPriceInfo.style.display = 'flex';
+    } else {
+        modelPriceInfo.style.display = 'none';
+    }
+}
+
+// Рендеринг основного селекта
+function renderModelSelect() {
+    const modelSelect = document.getElementById('modelSelect');
+    if (!modelSelect) return;
+
+    // Очищаем
+    modelSelect.innerHTML = '';
+
+    // Добавляем избранные модели
+    const addedModels = new Set();
+    chatState.favoriteModels.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = model.name;
+        if (model.id === chatState.currentModel) {
+            option.selected = true;
+        }
+        modelSelect.appendChild(option);
+        addedModels.add(model.id);
+    });
+
+    // Если текущая модель не в избранных, добавляем её
+    if (chatState.currentModel && !addedModels.has(chatState.currentModel)) {
+        // Ищем модель в allModels
+        const currentModelData = chatState.allModels.find(m => m.id === chatState.currentModel);
+
+        const option = document.createElement('option');
+        option.value = chatState.currentModel;
+        option.textContent = currentModelData ? currentModelData.name : chatState.currentModel;
+        option.selected = true;
+        modelSelect.appendChild(option);
+    }
+
+    // Если нет избранных и нет текущей модели, добавляем дефолтную
+    if (chatState.favoriteModels.length === 0 && !chatState.currentModel) {
+        const option = document.createElement('option');
+        option.value = 'openai/gpt-4o-mini';
+        option.textContent = 'GPT-4o Mini';
+        option.selected = true;
+        modelSelect.appendChild(option);
+    }
+}
+
+// Открытие модального окна выбора моделей
+async function openModelModal() {
+    // Блокируем если в чате уже есть сообщения
+    if (chatState.messages.length > 0) {
+        alert('Нельзя менять модель в середине диалога. Создайте новый чат для смены модели.');
+        return;
+    }
+
+    const modal = document.getElementById('modelModal');
+    if (!modal) return;
+
+    modal.classList.add('active');
+
+    const loading = document.getElementById('modelListLoading');
+    const modelList = document.getElementById('modelList');
+
+    // Загружаем модели если еще не загружены
+    if (chatState.allModels.length === 0) {
+        await loadAllModels();
+    } else {
+        // Модели уже загружены - скрываем loading и показываем список
+        if (loading) loading.style.display = 'none';
+        if (modelList) modelList.style.display = 'block';
+        renderModelList(chatState.allModels);
+    }
+}
+
+// Закрытие модального окна
+function closeModelModalFunc() {
+    const modal = document.getElementById('modelModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+
+    // Очищаем поиск
+    const searchInput = document.getElementById('modelSearchInput');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+}
+
+// Загрузка всех моделей от API
+async function loadAllModels() {
+    const loading = document.getElementById('modelListLoading');
+    const modelList = document.getElementById('modelList');
+
+    try {
+        loading.style.display = 'flex';
+        modelList.style.display = 'none';
+
+        const response = await fetch('/api/v1/chat/models');
+        if (!response.ok) {
+            throw new Error('Failed to load models');
+        }
+
+        const data = await response.json();
+
+        // Фильтруем только топовые модели
+        chatState.allModels = filterTopModels(data.models);
+
+        loading.style.display = 'none';
+        modelList.style.display = 'block';
+
+        renderModelList(chatState.allModels);
+
+        // Обновляем цену текущей модели после загрузки
+        updateModelPrice();
+
+    } catch (error) {
+        console.error('Ошибка загрузки моделей:', error);
+        loading.innerHTML = '<p style="color: var(--text-error);">Ошибка загрузки моделей</p>';
+    }
+}
+
+// Фильтрация топовых моделей
+function filterTopModels(models) {
+    return models.filter(model => {
+        const modelId = model.id.toLowerCase();
+        return TOP_PROVIDERS.some(provider => modelId.startsWith(provider));
+    }).sort((a, b) => {
+        // Сортируем по провайдеру, потом по имени
+        const providerA = a.id.split('/')[0];
+        const providerB = b.id.split('/')[0];
+        if (providerA !== providerB) {
+            return providerA.localeCompare(providerB);
+        }
+        return a.name.localeCompare(b.name);
+    });
+}
+
+// Рендеринг списка моделей
+function renderModelList(models) {
+    const modelList = document.getElementById('modelList');
+    if (!modelList) return;
+
+    modelList.innerHTML = '';
+
+    if (models.length === 0) {
+        modelList.innerHTML = '<p class="no-models">Модели не найдены</p>';
+        return;
+    }
+
+    // Разделяем на избранные и остальные
+    const favoriteIds = chatState.favoriteModels.map(m => m.id);
+    const favoriteModels = models.filter(m => favoriteIds.includes(m.id));
+    const otherModels = models.filter(m => !favoriteIds.includes(m.id));
+
+    // Сначала показываем избранные, если они есть
+    if (favoriteModels.length > 0) {
+        const favoritesGroup = document.createElement('div');
+        favoritesGroup.className = 'model-provider-group';
+
+        const favoritesHeader = document.createElement('div');
+        favoritesHeader.className = 'model-provider-header';
+        favoritesHeader.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.003-.003.001a.752.752 0 01-.704 0l-.003-.001z"/>
+            </svg>
+            Избранные
+        `;
+        favoritesHeader.style.borderLeftColor = '#ffc107';
+        favoritesGroup.appendChild(favoritesHeader);
+
+        favoriteModels.forEach(model => {
+            const modelItem = createModelItem(model);
+            favoritesGroup.appendChild(modelItem);
+        });
+
+        modelList.appendChild(favoritesGroup);
+    }
+
+    // Группируем остальные по провайдеру
+    const groupedModels = {};
+    otherModels.forEach(model => {
+        const provider = model.id.split('/')[0];
+        const providerName = getProviderDisplayName(provider);
+
+        if (!groupedModels[providerName]) {
+            groupedModels[providerName] = [];
+        }
+        groupedModels[providerName].push(model);
+    });
+
+    // Рендерим группы провайдеров
+    Object.keys(groupedModels).sort().forEach(providerName => {
+        const providerGroup = document.createElement('div');
+        providerGroup.className = 'model-provider-group';
+
+        const providerHeader = document.createElement('div');
+        providerHeader.className = 'model-provider-header';
+        providerHeader.textContent = providerName;
+        providerGroup.appendChild(providerHeader);
+
+        groupedModels[providerName].forEach(model => {
+            const modelItem = createModelItem(model);
+            providerGroup.appendChild(modelItem);
+        });
+
+        modelList.appendChild(providerGroup);
+    });
+}
+
+// Форматирование цены модели
+function formatModelPrice(pricing) {
+    if (!pricing || (!pricing.prompt && !pricing.completion)) {
+        return 'Free';
+    }
+
+    const promptPrice = parseFloat(pricing.prompt || 0) * 1000000;
+    const completionPrice = parseFloat(pricing.completion || 0) * 1000000;
+
+    if (promptPrice === 0 && completionPrice === 0) {
+        return 'Free';
+    }
+
+    return `$${promptPrice.toFixed(2)} / $${completionPrice.toFixed(2)} per 1M`;
+}
+
+// Создание элемента модели
+function createModelItem(model) {
+    const item = document.createElement('div');
+    item.className = 'model-item';
+
+    const isFavorite = chatState.favoriteModels.some(m => m.id === model.id);
+    const priceText = formatModelPrice(model.pricing);
+
+    item.innerHTML = `
+        <div class="model-item-content">
+            <div class="model-item-name">${model.name}</div>
+            <div class="model-item-id">${model.id}</div>
+            ${model.description ? `<div class="model-item-description">${model.description.substring(0, 100)}...</div>` : ''}
+            <div class="model-item-price">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                ${priceText}
+            </div>
+        </div>
+        <button class="model-item-favorite ${isFavorite ? 'active' : ''}" data-model-id="${model.id}" title="${isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.003-.003.001a.752.752 0 01-.704 0l-.003-.001z"/>
+            </svg>
+        </button>
+    `;
+
+    // Обработчик клика на модель для выбора
+    const modelContent = item.querySelector('.model-item-content');
+    modelContent.addEventListener('click', () => {
+        // Устанавливаем текущую модель
+        chatState.currentModel = model.id;
+        localStorage.setItem('selectedModel', model.id);
+
+        // Обновляем селект
+        renderModelSelect();
+
+        // Обновляем цену
+        updateModelPrice();
+
+        // Закрываем модальное окно
+        closeModelModalFunc();
+    });
+
+    // Обработчик клика на звезду
+    const favoriteBtn = item.querySelector('.model-item-favorite');
+    favoriteBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Чтобы не срабатывал клик на модель
+        toggleFavoriteModel(model);
+    });
+
+    return item;
+}
+
+// Переключение избранного
+function toggleFavoriteModel(model) {
+    const index = chatState.favoriteModels.findIndex(m => m.id === model.id);
+
+    if (index !== -1) {
+        // Удаляем из избранного
+        chatState.favoriteModels.splice(index, 1);
+    } else {
+        // Добавляем в избранное
+        const provider = model.id.split('/')[0];
+        chatState.favoriteModels.push({
+            id: model.id,
+            name: model.name,
+            description: model.description,
+            provider: getProviderDisplayName(provider)
+        });
+    }
+
+    // Сохраняем
+    saveFavoriteModels();
+
+    // Обновляем селект
+    renderModelSelect();
+
+    // Перерисовываем список в модальном окне
+    const searchInput = document.getElementById('modelSearchInput');
+    const searchQuery = searchInput ? searchInput.value : '';
+
+    if (searchQuery) {
+        searchModels(searchQuery);
+    } else {
+        renderModelList(chatState.allModels);
+    }
+}
+
+// Поиск моделей
+function searchModels(query) {
+    const lowerQuery = query.toLowerCase();
+
+    const filtered = chatState.allModels.filter(model => {
+        return model.id.toLowerCase().includes(lowerQuery) ||
+               model.name.toLowerCase().includes(lowerQuery) ||
+               (model.description && model.description.toLowerCase().includes(lowerQuery));
+    });
+
+    renderModelList(filtered);
+}
+
+// Получение названия провайдера для отображения
+function getProviderDisplayName(provider) {
+    const providerNames = {
+        'openai': 'OpenAI',
+        'anthropic': 'Anthropic Claude',
+        'google': 'Google Gemini',
+        'x-ai': 'xAI Grok',
+        'deepseek': 'DeepSeek'
+    };
+
+    return providerNames[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
+}
+
+// ========== Функции для работы с выбором агента ==========
+
+// Инициализация выбора агента
+async function initAgentSelector() {
+    // Загружаем сохраненную категорию из localStorage
+    loadAgentCategory();
+
+    // Загружаем категории с сервера для корректного отображения названий
+    try {
+        const response = await fetch('/api/v1/chat/agent-categories');
+        if (response.ok) {
+            const data = await response.json();
+            chatState.availableCategories = data.categories || {};
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки категорий агентов:', error);
+    }
+
+    // Обновляем label кнопки (после загрузки категорий!)
+    updateAgentLabel();
+
+    // Кнопка открытия модального окна
+    const selectAgentBtn = document.getElementById('selectAgentBtn');
+    if (selectAgentBtn) {
+        selectAgentBtn.addEventListener('click', openAgentModal);
+    }
+
+    // Кнопки закрытия модального окна
+    const closeAgentModal = document.getElementById('closeAgentModal');
+    const closeAgentModalBtn = document.getElementById('closeAgentModalBtn');
+
+    if (closeAgentModal) {
+        closeAgentModal.addEventListener('click', closeAgentModalFunc);
+    }
+
+    if (closeAgentModalBtn) {
+        closeAgentModalBtn.addEventListener('click', closeAgentModalFunc);
+    }
+
+    // Закрытие по клику на overlay
+    const agentModal = document.getElementById('agentModal');
+    if (agentModal) {
+        agentModal.addEventListener('click', (e) => {
+            if (e.target.classList.contains('agent-modal-overlay') || e.target === agentModal) {
+                closeAgentModalFunc();
+            }
+        });
+    }
+
+    // Загружаем доступные категории
+    try {
+        const response = await fetch('/api/v1/chat/agent-categories');
+        if (response.ok) {
+            const data = await response.json();
+            chatState.availableCategories = data.categories || {};
+            renderAgentCategories();
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки категорий агентов:', error);
+    }
+
+    // === Инициализация модального окна промптов ===
+    const closePromptModalEl = document.getElementById('closePromptModal');
+    const closePromptModalBtn = document.getElementById('closePromptModalBtn');
+    const savePromptBtn = document.getElementById('savePromptBtn');
+    const resetPromptBtn = document.getElementById('resetPromptBtn');
+    const currentTab = document.getElementById('currentTab');
+    const defaultTab = document.getElementById('defaultTab');
+
+    if (closePromptModalEl) {
+        closePromptModalEl.addEventListener('click', closePromptModal);
+    }
+
+    if (closePromptModalBtn) {
+        closePromptModalBtn.addEventListener('click', closePromptModal);
+    }
+
+    if (savePromptBtn) {
+        savePromptBtn.addEventListener('click', savePrompt);
+    }
+
+    if (resetPromptBtn) {
+        resetPromptBtn.addEventListener('click', resetPrompt);
+    }
+
+    if (currentTab) {
+        currentTab.addEventListener('click', () => switchPromptTab('current'));
+    }
+
+    if (defaultTab) {
+        defaultTab.addEventListener('click', () => switchPromptTab('default'));
+    }
+
+    // Закрытие модального окна промптов по клику на overlay
+    const promptModal = document.getElementById('promptModal');
+    if (promptModal) {
+        promptModal.addEventListener('click', (e) => {
+            if (e.target.classList.contains('prompt-modal-overlay') || e.target === promptModal) {
+                closePromptModal();
+            }
+        });
+    }
+}
+
+// Загрузка сохраненной категории из localStorage
+function loadAgentCategory() {
+    const storedCategory = localStorage.getItem('agentCategory');
+    if (storedCategory !== null) {
+        chatState.agentCategory = storedCategory;
+    } else {
+        // По умолчанию используем универсальный агент
+        chatState.agentCategory = 'universal';
+        saveAgentCategory(); // Сохраняем в localStorage
+    }
+}
+
+// Сохранение категории в localStorage
+function saveAgentCategory() {
+    localStorage.setItem('agentCategory', chatState.agentCategory);
+}
+
+// Обновление label кнопки выбора агента
+function updateAgentLabel() {
+    const label = document.getElementById('selectedAgentLabel');
+    if (!label) return;
+
+    if (chatState.agentCategory === '') {
+        label.textContent = 'Обычный чат';
+    } else {
+        const category = chatState.availableCategories[chatState.agentCategory];
+        label.textContent = category ? category.name : chatState.agentCategory;
+    }
+}
+
+// Обновление состояния контролов (блокировка если есть сообщения)
+function updateControlsState() {
+    const hasMessages = chatState.messages.length > 0;
+
+    // Кнопка выбора агента
+    const selectAgentBtn = document.getElementById('selectAgentBtn');
+    if (selectAgentBtn) {
+        if (hasMessages) {
+            selectAgentBtn.disabled = true;
+            selectAgentBtn.style.opacity = '0.5';
+            selectAgentBtn.style.cursor = 'not-allowed';
+            selectAgentBtn.title = 'Нельзя менять агента в середине диалога';
+        } else {
+            selectAgentBtn.disabled = false;
+            selectAgentBtn.style.opacity = '1';
+            selectAgentBtn.style.cursor = 'pointer';
+            selectAgentBtn.title = 'Выбрать специализированного агента';
+        }
+    }
+
+    // Селект модели
+    const modelSelect = document.getElementById('modelSelect');
+    if (modelSelect) {
+        modelSelect.disabled = hasMessages;
+        if (hasMessages) {
+            modelSelect.style.opacity = '0.5';
+            modelSelect.style.cursor = 'not-allowed';
+        } else {
+            modelSelect.style.opacity = '1';
+            modelSelect.style.cursor = 'pointer';
+        }
+    }
+
+    // Кнопка выбора модели
+    const selectModelBtn = document.getElementById('selectModelBtn');
+    if (selectModelBtn) {
+        if (hasMessages) {
+            selectModelBtn.disabled = true;
+            selectModelBtn.style.opacity = '0.5';
+            selectModelBtn.style.cursor = 'not-allowed';
+            selectModelBtn.title = 'Нельзя менять модель в середине диалога';
+        } else {
+            selectModelBtn.disabled = false;
+            selectModelBtn.style.opacity = '1';
+            selectModelBtn.style.cursor = 'pointer';
+            selectModelBtn.title = 'Выбрать модель';
+        }
+    }
+
+    // Инпут контекста
+    const contextLimit = document.getElementById('contextLimit');
+    if (contextLimit) {
+        contextLimit.disabled = hasMessages;
+        if (hasMessages) {
+            contextLimit.style.opacity = '0.5';
+            contextLimit.style.cursor = 'not-allowed';
+            contextLimit.title = 'Нельзя менять контекст в середине диалога';
+        } else {
+            contextLimit.style.opacity = '1';
+            contextLimit.style.cursor = 'text';
+            contextLimit.title = 'Количество сообщений истории для передачи в AI';
+        }
+    }
+}
+
+// Открытие модального окна выбора агента
+async function openAgentModal() {
+    // Блокируем если в чате уже есть сообщения
+    if (chatState.messages.length > 0) {
+        alert('Нельзя менять агента в середине диалога. Создайте новый чат для смены агента.');
+        return;
+    }
+
+    const modal = document.getElementById('agentModal');
+    if (!modal) return;
+
+    modal.classList.add('active');
+
+    // Если категории еще не загружены - загружаем
+    if (Object.keys(chatState.availableCategories).length === 0) {
+        try {
+            const response = await fetch('/api/v1/chat/agent-categories');
+            if (response.ok) {
+                const data = await response.json();
+                chatState.availableCategories = data.categories || {};
+                renderAgentCategories();
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки категорий агентов:', error);
+        }
+    }
+}
+
+// Закрытие модального окна
+function closeAgentModalFunc() {
+    const modal = document.getElementById('agentModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Рендеринг списка категорий агентов
+function renderAgentCategories() {
+    const container = document.getElementById('agentCategoriesList');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Сортируем категории для стабильного порядка
+    // "universal" всегда первый, остальные по алфавиту
+    const sortedCategories = Object.entries(chatState.availableCategories)
+        .sort(([keyA], [keyB]) => {
+            if (keyA === 'universal') return -1;
+            if (keyB === 'universal') return 1;
+            return keyA.localeCompare(keyB);
+        });
+
+    sortedCategories.forEach(([categoryId, categoryInfo]) => {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'agent-category';
+        if (chatState.agentCategory === categoryId) {
+            categoryDiv.classList.add('selected');
+        }
+        categoryDiv.dataset.category = categoryId;
+
+        // Для "universal" не показываем кнопку "Подробнее"
+        const showDetailsBtn = categoryId !== 'universal';
+
+        categoryDiv.innerHTML = `
+            <div class="agent-category-header">
+                <div class="agent-category-icon">${categoryInfo.icon || '🤖'}</div>
+                <div class="agent-category-info">
+                    <h4>${categoryInfo.name}</h4>
+                    <p>${categoryInfo.description}</p>
+                    <span class="agent-category-modules">${categoryInfo.modules_count} ${categoryInfo.modules_count === 1 ? 'модуль' : categoryInfo.modules_count < 5 ? 'модуля' : 'модулей'}</span>
+                </div>
+            </div>
+            <div class="agent-category-actions">
+                <button class="btn-agent-select" onclick="selectAgentCategory('${categoryId}'); event.stopPropagation();">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Выбрать
+                </button>
+                <button class="btn-agent-prompts" onclick="showAgentPrompts('${categoryId}'); event.stopPropagation();" title="Просмотр и редактирование системных промптов">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                    </svg>
+                    Промпты
+                </button>
+                ${showDetailsBtn ? `<button class="btn-agent-details" onclick="showCategoryDetails('${categoryId}'); event.stopPropagation();">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 16v-4M12 8h.01"/>
+                    </svg>
+                    Подробнее
+                </button>` : ''}
+            </div>
+        `;
+
+        container.appendChild(categoryDiv);
+    });
+}
+
+// Выбор категории агента
+function selectAgentCategory(categoryId) {
+    chatState.agentCategory = categoryId;
+    saveAgentCategory();
+    updateAgentLabel();
+
+    // Обновляем визуальное выделение
+    document.querySelectorAll('.agent-category').forEach(el => {
+        el.classList.remove('selected');
+        if (el.dataset.category === categoryId) {
+            el.classList.add('selected');
+        }
+    });
+
+    // Если в чате нет сообщений - обновляем приветственное сообщение
+    if (chatState.messages.length === 0) {
+        showWelcomeMessage();
+    }
+
+    // Закрываем модальное окно
+    closeAgentModalFunc();
+}
+
+// Показать детали категории агента
+async function showCategoryDetails(categoryId) {
+    try {
+        // Получаем детальную информацию о модулях категории
+        const response = await fetch(`/api/v1/chat/agent-category/${categoryId}/details`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch category details');
+        }
+
+        const data = await response.json();
+        const categoryInfo = chatState.availableCategories[categoryId];
+
+        // Создаем модальное окно с подробностями
+        showDetailsModal(categoryInfo, data.modules);
+
+    } catch (error) {
+        console.error('Error fetching category details:', error);
+        alert('Не удалось загрузить информацию о модулях');
+    }
+}
+
+// Показать модальное окно с деталями
+function showDetailsModal(categoryInfo, modules) {
+    // Создаем overlay и модальное окно
+    const overlay = document.createElement('div');
+    overlay.className = 'details-modal-overlay';
+    overlay.id = 'detailsModalOverlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'details-modal';
+    modal.id = 'detailsModal';
+
+    // Формируем список модулей с деталями
+    let modulesHTML = '';
+    modules.forEach((module, index) => {
+        const logicHTML = module.logic && module.logic.length > 0
+            ? `<ul class="module-logic">${module.logic.map(point => `<li>${point}</li>`).join('')}</ul>`
+            : '<p class="no-logic">Логика не указана</p>';
+
+        modulesHTML += `
+            <div class="module-detail ${index > 0 ? 'module-detail-separator' : ''}">
+                <h4 class="module-name">${module.short_description || module.slug}</h4>
+                <p class="module-description">${module.detailed_description || 'Описание отсутствует'}</p>
+                <div class="module-logic-section">
+                    <strong>Логика работы:</strong>
+                    ${logicHTML}
+                </div>
+            </div>
+        `;
+    });
+
+    modal.innerHTML = `
+        <div class="details-modal-header">
+            <h3>${categoryInfo.icon} ${categoryInfo.name}</h3>
+            <button class="details-modal-close" id="closeDetailsModal">&times;</button>
+        </div>
+        <div class="details-modal-body">
+            <p class="category-description">${categoryInfo.description}</p>
+            <div class="modules-count-badge">${categoryInfo.modules_count} ${categoryInfo.modules_count === 1 ? 'модуль' : categoryInfo.modules_count < 5 ? 'модуля' : 'модулей'}</div>
+            <div class="modules-list">
+                ${modulesHTML}
+            </div>
+        </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Обработчики закрытия
+    document.getElementById('closeDetailsModal').addEventListener('click', closeDetailsModal);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeDetailsModal();
+        }
+    });
+
+    // Показываем с анимацией
+    setTimeout(() => {
+        overlay.classList.add('active');
+    }, 10);
+}
+
+// Закрыть модальное окно с деталями
+function closeDetailsModal() {
+    const overlay = document.getElementById('detailsModalOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        setTimeout(() => {
+            overlay.remove();
+        }, 300);
+    }
+}
+
+
+// ========== Управление системными промптами агентов ==========
+
+let currentPromptCategory = null;
+let currentPromptData = null;
+
+// Показать модальное окно промптов агента
+async function showAgentPrompts(categoryId) {
+    try {
+        currentPromptCategory = categoryId;
+
+        // Загружаем данные промпта
+        const response = await fetch(`/api/v1/chat/agent-prompts/${categoryId}`);
+        if (!response.ok) {
+            throw new Error('Failed to load prompt data');
+        }
+
+        currentPromptData = await response.json();
+
+        // Получаем название категории
+        const categoryInfo = chatState.availableCategories[categoryId];
+        const categoryName = categoryInfo ? categoryInfo.name : categoryId;
+
+        // Обновляем заголовок
+        document.getElementById('promptModalTitle').textContent = `Промпты: ${categoryName}`;
+
+        // Заполняем текстовые поля
+        document.getElementById('currentPromptTextarea').value = currentPromptData.current_prompt;
+        document.getElementById('defaultPromptTextarea').value = currentPromptData.default_prompt;
+
+        // Показываем/скрываем кнопку сброса
+        const resetBtn = document.getElementById('resetPromptBtn');
+        if (currentPromptData.is_custom) {
+            resetBtn.style.display = 'inline-block';
+        } else {
+            resetBtn.style.display = 'none';
+        }
+
+        // Обновляем статус
+        updatePromptStatus();
+
+        // Открываем модальное окно
+        const modal = document.getElementById('promptModal');
+        if (modal) {
+            modal.classList.add('active');
+        }
+
+    } catch (error) {
+        console.error('Error loading prompt:', error);
+        alert('Ошибка при загрузке промпта');
+    }
+}
+
+// Обновить статус промпта
+function updatePromptStatus() {
+    const statusDiv = document.getElementById('promptStatus');
+    if (!statusDiv || !currentPromptData) return;
+
+    if (currentPromptData.is_custom) {
+        statusDiv.innerHTML = `
+            <div class="prompt-status-custom">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <span>Используется кастомный промпт. Вы можете вернуться к дефолтному, нажав "Сбросить к дефолтному".</span>
+            </div>
+        `;
+    } else {
+        statusDiv.innerHTML = `
+            <div class="prompt-status-default">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+                <span>Используется дефолтный промпт. Вы можете отредактировать и сохранить свою версию.</span>
+            </div>
+        `;
+    }
+}
+
+// Закрыть модальное окно промптов
+function closePromptModal() {
+    const modal = document.getElementById('promptModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    // Сбрасываем активную вкладку на "Текущий"
+    switchPromptTab('current');
+}
+
+// Переключение вкладок
+function switchPromptTab(tabName) {
+    // Убираем активность со всех вкладок и контента
+    document.querySelectorAll('.prompt-tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.prompt-tab-content').forEach(content => content.classList.remove('active'));
+
+    // Добавляем активность нужной вкладке
+    const tab = document.querySelector(`.prompt-tab[data-tab="${tabName}"]`);
+    const content = document.getElementById(`${tabName}TabContent`);
+
+    if (tab) tab.classList.add('active');
+    if (content) content.classList.add('active');
+}
+
+// Сохранить промпт
+async function savePrompt() {
+    try {
+        const newPrompt = document.getElementById('currentPromptTextarea').value;
+
+        if (!newPrompt || newPrompt.trim() === '') {
+            alert('Промпт не может быть пустым');
+            return;
+        }
+
+        // Отправляем обновление
+        const response = await fetch(`/api/v1/chat/agent-prompts/${currentPromptCategory}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prompt: newPrompt })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to save prompt');
+        }
+
+        const result = await response.json();
+
+        // Обновляем локальные данные
+        currentPromptData.current_prompt = newPrompt;
+        currentPromptData.is_custom = result.is_custom;
+
+        // Обновляем статус
+        updatePromptStatus();
+
+        // Показываем кнопку сброса
+        const resetBtn = document.getElementById('resetPromptBtn');
+        if (resetBtn) {
+            resetBtn.style.display = 'inline-block';
+        }
+
+        alert('Промпт успешно сохранен');
+
+    } catch (error) {
+        console.error('Error saving prompt:', error);
+        alert('Ошибка при сохранении промпта');
+    }
+}
+
+// Сбросить промпт к дефолтному
+async function resetPrompt() {
+    if (!confirm('Вы уверены, что хотите сбросить промпт к дефолтному значению? Ваши изменения будут потеряны.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/chat/agent-prompts/${currentPromptCategory}/reset`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to reset prompt');
+        }
+
+        const result = await response.json();
+
+        // Обновляем локальные данные
+        currentPromptData.current_prompt = currentPromptData.default_prompt;
+        currentPromptData.is_custom = false;
+
+        // Обновляем текстовое поле
+        document.getElementById('currentPromptTextarea').value = currentPromptData.default_prompt;
+
+        // Обновляем статус
+        updatePromptStatus();
+
+        // Скрываем кнопку сброса
+        const resetBtn = document.getElementById('resetPromptBtn');
+        if (resetBtn) {
+            resetBtn.style.display = 'none';
+        }
+
+        alert('Промпт успешно сброшен к дефолтному');
+
+    } catch (error) {
+        console.error('Error resetting prompt:', error);
+        alert('Ошибка при сбросе промпта');
+    }
+}

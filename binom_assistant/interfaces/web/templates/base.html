@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Binom Assistant{% endblock %}</title>
+
+    <!-- Мета теги -->
+    <meta name="description" content="Система анализа рекламных кампаний Binom">
+    <meta name="theme-color" content="#1a1a2e">
+
+    <!-- Favicon -->
+<link rel="icon" type="image/png" href="/static/images/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/png" href="/static/images/apple-touch-icon.png" sizes="180x180" />
+<link rel="icon" type="image/png" href="/static/images/web-app-manifest-192x192.png" sizes="192x192" />
+<link rel="icon" type="image/png" href="/static/images/web-app-manifest-256x256.png" sizes="256x256" />
+<link rel="icon" type="image/png" href="/static/images/web-app-manifest-512x512.png" sizes="512x512" />
+<link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
+<link rel="shortcut icon" href="/static/images/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/images/site.webmanifest" />
+
+    <!-- Стили -->
+    <link rel="stylesheet" href="/static/css/main.css?v=5">
+    <link rel="stylesheet" href="/static/css/components.css?v=10">
+    <link rel="stylesheet" href="/static/css/responsive.css?v=5">
+
+    {% block extra_css %}{% endblock %}
+
+    <!-- Инициализация темы до загрузки страницы -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme-init');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <!-- Лоадер для первой загрузки -->
+    <div id="initial-loader" class="loader-overlay">
+        <div class="loader"></div>
+        <p>Загрузка Binom Assistant...</p>
+    </div>
+
+    <div class="app-container">
+       
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Хедер -->
+            {% set page_title %}{% block page_title %}Дашборд{% endblock %}{% endset %}
+            {% include 'components/header.html' %}
+
+            <!-- Контент страницы -->
+            <div class="content-wrapper">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-left">
+                <p style="display: block;" class="footer-disclaimer">
+&#9881; AS iS: Без саппорта, без гарантий. Если вам зашло, то можно <a href="#donate" style="color: var(--text-primary);" >отблагодарить автора</a></p>
+            </div>
+
+             <div class="footer-right">
+            <p class="footer-copyright">&copy; Built with pain, coffee & Claude Code  |  &nbsp;
+                 <a href="https://github.com/garik128/binom_assistant" target="_blank" style="color: var(--text-primary);" >Github</a> |  <a href="https://t.me/binom_assistant" target="_blank" style="color: var(--text-primary);" > Telegram</a> </p>
+              
+            </div>
+        </footer>
+    </div>
+
+    <!-- Toast уведомления -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Модальные окна -->
+    <div id="modal-container"></div>
+
+    <!-- Модалка доната -->
+    <div id="donateModal" class="modal">
+        <div class="modal-content donate-modal-content">
+            <div class="modal-header">
+                <h3>Адрес TRON</h3>
+                <button class="modal-close" onclick="closeDonateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="donate-content">
+                     <label>USDT TRC-20 (или TRX)</label>
+                    <div class="donate-qr">
+                        <img src="/static/images/qr.jpg" alt="QR код для доната">
+                    </div>
+                    <div class="donate-info">
+
+                        <div class="donate-address">
+                            <div class="address-copy-wrapper">
+                                <input type="text" readonly value="TGGyycQF8geAkxyMJDJzDYVLkibDnBnDph" id="donateAddress" class="address-input">
+                                <button onclick="copyDonateAddress()" class="btn-copy" title="Копировать адрес">
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка первого запуска -->
+    <div id="firstRunModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Первичная загрузка данных</h3>
+                <button class="modal-close" onclick="closeFirstRunModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="padding: 20px; text-align: center;">
+                    <div style="margin-bottom: 20px;">
+                        <div class="loader" style="margin: 0 auto 20px;"></div>
+                    </div>
+
+                    <p style="font-size: 16px; margin-bottom: 15px; color: var(--text-primary);">
+                        Запущен сбор данных за 60 дней из Binom
+                    </p>
+
+                    <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 10px;">
+                        Это займет несколько минут, в зависимости от объема данных
+                    </p>
+
+                    <p style="font-size: 14px; color: var(--text-secondary);">
+                        После завершения данные появятся на дашборде
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрипты -->
+    <script src="/static/js/chart.min.js"></script>
+    <script src="/static/js/api.js?v=16"></script>
+    <script src="/static/js/notifications.js?v=2"></script>
+    <script src="/static/js/main.js?v=20"></script>
+
+    <!-- Применяем тему из localStorage -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+            }
+        })();
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

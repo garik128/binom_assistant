@@ -1,0 +1,87 @@
+/* Компактный режим сайдбара */
+.chat-sidebar.compact {
+    width: 40px;
+    min-width: 40px;
+}
+
+/* В компактном режиме скрываем текст */
+.chat-sidebar.compact .sidebar-header h2,
+.chat-sidebar.compact .chat-item-content,
+.chat-sidebar.compact .chat-item-delete,
+.chat-sidebar.compact .btn-show-more,
+.chat-sidebar.compact .btn-delete-all-chats,
+.chat-sidebar.compact .sidebar-search {
+    display: none !important;
+}
+
+/* Скрываем текстовые ноды внутри section-header в компактном режиме */
+.chat-sidebar.compact .section-header {
+    font-size: 0;
+}
+
+/* В компактном режиме показываем только иконки */
+.chat-sidebar.compact .sidebar-header {
+    justify-content: center;
+    padding: 1rem 0.5rem;
+}
+
+.chat-sidebar.compact .btn-new-chat {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+    gap: 0;
+}
+
+.chat-sidebar.compact .btn-new-chat svg {
+    margin: 0;
+}
+
+/* Секции в компактном режиме */
+.chat-sidebar.compact .chat-section {
+    padding: 0;
+}
+
+.chat-sidebar.compact .section-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.75rem 0;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    font-size: 0;
+}
+
+.chat-sidebar.compact .section-header:hover {
+    background: var(--bg-hover);
+}
+
+.chat-sidebar.compact .section-header svg {
+    width: 20px;
+    height: 20px;
+    color: var(--text-secondary);
+}
+
+/* Скрываем кнопку добавления шаблона в компактном режиме */
+.chat-sidebar.compact .btn-add-template {
+    display: none !important;
+}
+
+/* Списки чатов и шаблонов скрыты в компактном режиме */
+.chat-sidebar.compact .chat-list,
+.chat-sidebar.compact .template-list {
+    display: none !important;
+}
+
+/* Кнопка toggle остается видимой */
+.chat-sidebar.compact .sidebar-toggle {
+    transform: rotate(180deg);
+    right: 0px;
+}
+/* Адаптация для мобильных - в компактном режиме полностью скрываем */
+@media (max-width: 768px) {
+    .chat-sidebar.compact {
+        transform: translateX(-100%);
+    }
+}

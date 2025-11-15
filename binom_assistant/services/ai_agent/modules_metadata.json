@@ -1,0 +1,1534 @@
+{
+  "critical_alerts": {
+    "bleeding_detector": {
+      "name": "Утекающий бюджет",
+      "description": "Находит убыточные кампании с ROI < -50%",
+      "params": {
+        "roi_threshold": {
+          "type": "number",
+          "min": -100,
+          "max": 0,
+          "description": "ROI ниже которого кампания считается убыточной"
+        },
+        "min_spend": {
+          "type": "number",
+          "min": 1,
+          "max": 10000,
+          "description": "Минимальный расход для включения в анализ"
+        },
+        "days": {
+          "type": "number",
+          "min": 1,
+          "max": 365,
+          "description": "Количество последних дней для анализа"
+        }
+      }
+    },
+    "zero_approval_alert": {
+      "name": "Нет апрувов",
+      "description": "Находит кампании с нулевыми апрувами при наличии лидов",
+      "params": {
+        "min_leads": {
+          "type": "number",
+          "min": 5,
+          "max": 1000,
+          "description": "Минимальное количество лидов для включения в анализ"
+        },
+        "min_spend": {
+          "type": "number",
+          "min": 1,
+          "max": 10000,
+          "description": "Минимальный расход для включения в анализ"
+        },
+        "days": {
+          "type": "number",
+          "min": 1,
+          "max": 365,
+          "description": "Количество последних дней для анализа"
+        }
+      }
+    },
+    "spend_spike_monitor": {
+      "name": "Всплеск расходов",
+      "description": "Детектирует аномальные всплески расходов выше нормы",
+      "params": {
+        "base_days": {
+          "type": "number",
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней для расчета среднего расхода и стандартного отклонения"
+        },
+        "spike_threshold": {
+          "type": "number",
+          "min": 1.5,
+          "max": 10,
+          "description": "Минимальное увеличение расхода по отношению к среднему (например, 2 = в 2 раза)"
+        },
+        "sigma_multiplier": {
+          "type": "number",
+          "min": 1,
+          "max": 5,
+          "description": "Множитель для стандартного отклонения (2σ = 95.4%, 3σ = 99.7%)"
+        },
+        "min_base_spend": {
+          "type": "number",
+          "min": 0.1,
+          "max": 10000,
+          "description": "Минимальный средний расход в базовом периоде для анализа"
+        },
+        "cr_growth_threshold": {
+          "type": "number",
+          "min": 10,
+          "max": 100,
+          "description": "Минимальный рост CR для игнорирования всплеска (если CR вырос - это масштабирование)"
+        }
+      }
+    },
+    "waste_campaign_finder": {
+      "name": "Слив бюджета",
+      "description": "Стабильно убыточные кампании без улучшений",
+      "params": {
+        "roi_threshold": {
+          "type": "number",
+          "min": -100,
+          "max": 0,
+          "description": "ROI ниже которого день считается убыточным (в процентах)"
+        },
+        "min_daily_spend": {
+          "type": "number",
+          "min": 0.1,
+          "max": 10000,
+          "description": "Минимальный средний расход в день для анализа (в долларах)"
+        },
+        "consecutive_days": {
+          "type": "number",
+          "min": 3,
+          "max": 365,
+          "description": "Сколько дней подряд должен быть плохой ROI для срабатывания"
+        },
+        "analysis_period": {
+          "type": "number",
+          "min": 7,
+          "max": 365,
+          "description": "Количество последних дней для анализа"
+        },
+        "recovery_threshold": {
+          "type": "number",
+          "min": -100,
+          "max": 0,
+          "description": "Средний ROI последних 3 дней выше этого значения считается восстановлением"
+        }
+      }
+    },
+    "traffic_quality_crash": {
+      "name": "Падение качества",
+      "description": "Обнаруживает падение качества трафика кампании (CR)",
+      "params": {
+        "cr_drop_threshold": {
+          "type": "number",
+          "min": 10,
+          "max": 90,
+          "description": "Минимальное падение CR для включения в анализ"
+        },
+        "traffic_stability": {
+          "type": "number",
+          "min": 10,
+          "max": 50,
+          "description": "Допустимое отклонение объема трафика между периодами"
+        },
+        "min_clicks": {
+          "type": "number",
+          "min": 100,
+          "max": 10000,
+          "description": "Минимальное количество кликов за период для анализа"
+        },
+        "sigma_threshold": {
+          "type": "number",
+          "min": 1.0,
+          "max": 5.0,
+          "description": "Минимальное отклонение в сигмах для детекции"
+        },
+        "days": {
+          "type": "number",
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней для текущего и предыдущего периода"
+        }
+      }
+    },
+    "squeezed_offer": {
+      "name": "Отжатый оффер",
+      "description": "Обнаруживает офферы с падением CR или процента апрувов",
+      "params": {
+        "days": {
+          "type": "number",
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней для анализа текущего и предыдущего периода (включая сегодня)"
+        },
+        "cr_drop_threshold": {
+          "type": "number",
+          "min": 10,
+          "max": 90,
+          "description": "Минимальное падение конверсии для детекции проблемы"
+        },
+        "approve_drop_threshold": {
+          "type": "number",
+          "min": 10,
+          "max": 90,
+          "description": "Минимальное падение процента апрувов для детекции проблемы"
+        },
+        "min_leads": {
+          "type": "number",
+          "min": 5,
+          "max": 1000,
+          "description": "Минимальное количество лидов за текущий период для анализа"
+        },
+        "traffic_stability": {
+          "type": "number",
+          "min": 10,
+          "max": 50,
+          "description": "Допустимое отклонение объема трафика между периодами"
+        }
+      }
+    }
+  },
+  "trend_analysis": {
+    "microtrend_scanner": {
+      "name": "Сканер микро-трендов",
+      "description": "Анализирует краткосрочные тренды (3-7 дней) в ключевых метриках кампаний",
+      "params": {}
+    },
+    "momentum_tracker": {
+      "name": "Сила импульса",
+      "description": "Сравнивает динамику текущей и предыдущей недели для определения ускорения/замедления роста",
+      "params": {
+        "current_week_days": {
+          "type": "number",
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа текущей недели (включая сегодня)"
+        },
+        "previous_week_days": {
+          "type": "number",
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа предыдущей недели"
+        },
+        "min_spend_per_week": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальный расход для включения кампании в анализ ($)"
+        },
+        "min_clicks_per_week": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальное количество кликов для включения в анализ"
+        }
+      }
+    },
+    "recovery_detector": {
+      "name": "Восстановление",
+      "description": "Поиск восстанавливающихся после просадки кампаний",
+      "params": {
+        "analysis_days": {
+          "type": "number",
+          "min": 7,
+          "max": 365,
+          "description": "Общий период анализа для поиска просадок и восстановления (включая сегодня)"
+        },
+        "min_bad_days": {
+          "type": "number",
+          "min": 2,
+          "max": 365,
+          "description": "Минимальное количество дней подряд с плохим ROI для определения просадки"
+        },
+        "bad_roi_threshold": {
+          "type": "number",
+          "min": -100,
+          "max": 0,
+          "description": "ROI ниже этого значения считается просадкой (%)"
+        },
+        "recovery_days": {
+          "type": "number",
+          "min": 1,
+          "max": 365,
+          "description": "Минимум дней подряд роста ROI для определения восстановления"
+        },
+        "recovery_improvement": {
+          "type": "number",
+          "min": 10,
+          "max": 100,
+          "description": "Минимальное улучшение ROI от минимума для подтверждения восстановления (%)"
+        },
+        "min_spend": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальный расход для включения кампании в анализ ($)"
+        },
+        "min_clicks": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальное количество кликов для включения в анализ"
+        }
+      }
+    },
+    "acceleration_monitor": {
+      "name": "Ускорение динамики",
+      "description": "Измеряет ускорение или замедление роста метрик через вторую производную",
+      "params": {
+        "days": {
+          "type": "number",
+          "min": 5,
+          "max": 365,
+          "description": "Количество дней для анализа динамики (включая сегодня)"
+        },
+        "min_spend": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальный средний расход в день для включения в анализ ($)"
+        },
+        "min_clicks": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальное количество кликов за весь период анализа"
+        },
+        "smoothing_window": {
+          "type": "number",
+          "min": 2,
+          "max": 5,
+          "description": "Размер окна для скользящего среднего (сглаживание шума)"
+        }
+      }
+    },
+    "trend_reversal_finder": {
+      "name": "Разворот тренда",
+      "description": "Обнаружение смены тренда с роста на падение для своевременной корректировки стратегии",
+      "params": {
+        "analysis_days": {
+          "type": "number",
+          "min": 7,
+          "max": 365,
+          "description": "Общий период анализа для поиска разворота тренда (включая сегодня)"
+        },
+        "growth_days": {
+          "type": "number",
+          "min": 3,
+          "max": 365,
+          "description": "Минимальное количество дней роста ROI для определения растущего тренда"
+        },
+        "decline_days": {
+          "type": "number",
+          "min": 2,
+          "max": 365,
+          "description": "Минимальное количество дней снижения для определения разворота"
+        },
+        "min_slope_change_degrees": {
+          "type": "number",
+          "min": 10,
+          "max": 90,
+          "description": "Минимальное изменение угла наклона тренда для определения разворота (градусы)"
+        },
+        "volume_stability_threshold": {
+          "type": "number",
+          "min": 10,
+          "max": 50,
+          "description": "Допустимое отклонение объема расходов для подтверждения разворота (%)"
+        },
+        "min_spend_per_day": {
+          "type": "number",
+          "min": 0.5,
+          "max": 10000,
+          "description": "Минимальный расход для включения кампании в анализ ($ в день)"
+        },
+        "min_clicks": {
+          "type": "number",
+          "min": 50,
+          "max": 10000,
+          "description": "Минимальное количество кликов за весь период анализа"
+        }
+      }
+    }
+  },
+  "stability": {
+    "volatility_calculator": {
+      "name": "Колебания метрик",
+      "description": "Расчет волатильности ключевых метрик кампаний",
+      "params": {
+        "days": {
+          "type": "number",
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней для расчета волатильности (включая сегодня)"
+        },
+        "min_spend": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальный расход для учета дня в расчете ($)"
+        },
+        "min_days_with_data": {
+          "type": "number",
+          "min": 3,
+          "max": 365,
+          "description": "Минимальное количество дней с данными для расчета"
+        }
+      }
+    },
+    "consistency_scorer": {
+      "name": "Стабильность",
+      "description": "Оценка стабильности прибыли во времени",
+      "params": {
+        "days": {
+          "type": "number",
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней для расчета консистентности (включая сегодня)"
+        },
+        "min_spend": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальный расход для учета дня в расчете ($)"
+        },
+        "min_days_with_data": {
+          "type": "number",
+          "min": 3,
+          "max": 365,
+          "description": "Минимальное количество дней с данными для расчета"
+        },
+        "profitability_threshold": {
+          "type": "number",
+          "min": 50,
+          "max": 100,
+          "description": "Минимальный процент прибыльных дней для высокой консистентности"
+        }
+      }
+    },
+    "reliability_index": {
+      "name": "Надёжность",
+      "description": "Комплексная оценка надежности для масштабирования",
+      "params": {
+        "days": {
+          "type": "number",
+          "min": 14,
+          "max": 365,
+          "description": "Количество дней для расчета надежности (включая сегодня)"
+        },
+        "min_spend": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальный расход для учета дня в расчете ($)"
+        },
+        "min_days_with_data": {
+          "type": "number",
+          "min": 7,
+          "max": 365,
+          "description": "Минимальное количество дней с данными для расчета"
+        },
+        "reliability_threshold": {
+          "type": "number",
+          "min": 50,
+          "max": 100,
+          "description": "Минимальный индекс надежности для высокого класса (0-100)"
+        },
+        "min_leads": {
+          "type": "number",
+          "min": 1,
+          "max": 1000,
+          "description": "Минимальное количество лидов для учета объема данных"
+        }
+      }
+    },
+    "performance_stability": {
+      "name": "Устойчивость результатов",
+      "description": "Анализ устойчивости результатов во времени",
+      "params": {
+        "days": {
+          "type": "number",
+          "min": 14,
+          "max": 365,
+          "description": "Количество дней для анализа устойчивости (включая сегодня)"
+        },
+        "min_spend": {
+          "type": "number",
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальный расход для учета дня в расчете ($)"
+        },
+        "min_days_with_data": {
+          "type": "number",
+          "min": 7,
+          "max": 365,
+          "description": "Минимальное количество дней с данными для анализа"
+        },
+        "weekday_weekend_diff_threshold": {
+          "type": "number",
+          "min": 10,
+          "max": 100,
+          "description": "Максимальная допустимая разница между буднями и выходными"
+        },
+        "stability_score_threshold": {
+          "type": "number",
+          "min": 50,
+          "max": 100,
+          "description": "Минимальный индекс устойчивости для высокой категории"
+        }
+      }
+    }
+  },
+  "predictive": {
+    "roi_forecast": {
+      "name": "Прогноз окупаемости",
+      "description": "Прогнозирует ROI на 3-7 дней вперед на основе исторических данных",
+      "params": {
+        "history_days": {
+          "type": "number",
+          "default": 30,
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней истории для анализа"
+        },
+        "forecast_days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "На сколько дней вперед строить прогноз"
+        },
+        "min_history_days": {
+          "type": "number",
+          "default": 7,
+          "min": 7,
+          "max": 365,
+          "description": "Минимальное количество дней с активностью для прогноза"
+        },
+        "min_daily_spend": {
+          "type": "number",
+          "default": 1,
+          "min": 0.1,
+          "max": 10000,
+          "description": "Минимальный средний расход в день ($)"
+        },
+        "confidence_level": {
+          "type": "number",
+          "default": 80,
+          "min": 50,
+          "max": 99,
+          "description": "Уровень доверительного интервала (%)"
+        }
+      }
+    },
+    "profitability_horizon": {
+      "name": "До безубыточности",
+      "description": "Прогноз выхода в безубыточность (ROI = 0)",
+      "params": {
+        "min_spend": {
+          "type": "number",
+          "default": 5,
+          "min": 1,
+          "max": 10000,
+          "description": "Минимальный общий расход за период ($)"
+        },
+        "days_history": {
+          "type": "number",
+          "default": 7,
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней истории для анализа тренда"
+        },
+        "min_trend": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 10,
+          "description": "Минимальный рост ROI в день (%)"
+        },
+        "min_r_squared": {
+          "type": "number",
+          "default": 0.3,
+          "min": 0.1,
+          "max": 1.0,
+          "description": "Минимальный R² для уверенности в прогнозе"
+        }
+      }
+    },
+    "approval_rate_predictor": {
+      "name": "Прогноз апрувов",
+      "description": "Прогнозирует approval rate для CPA кампаний на основе исторических данных",
+      "params": {
+        "min_leads": {
+          "type": "number",
+          "default": 10,
+          "min": 5,
+          "max": 1000,
+          "description": "Минимальное количество лидов за период"
+        },
+        "history_days": {
+          "type": "number",
+          "default": 14,
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней истории для анализа"
+        },
+        "forecast_days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "На сколько дней вперед строить прогноз"
+        }
+      }
+    },
+    "campaign_lifecycle_stage": {
+      "name": "Этап кампании",
+      "description": "Определяет стадию жизненного цикла кампании",
+      "params": {
+        "min_spend": {
+          "type": "number",
+          "default": 5,
+          "min": 1,
+          "max": 10000,
+          "description": "Минимальный общий расход для анализа ($)"
+        },
+        "days_history": {
+          "type": "number",
+          "default": 14,
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней для анализа"
+        },
+        "stagnation_threshold": {
+          "type": "number",
+          "default": 1,
+          "min": 0.1,
+          "max": 10,
+          "description": "Средний расход/день ниже которого кампания считается застойной ($)"
+        }
+      }
+    },
+    "revenue_projection": {
+      "name": "Прогноз дохода",
+      "description": "Прогнозирует revenue на следующие 7 дней на основе исторических данных",
+      "params": {
+        "history_days": {
+          "type": "number",
+          "default": 14,
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней истории для анализа"
+        },
+        "forecast_days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "На сколько дней вперед строить прогноз"
+        },
+        "min_revenue": {
+          "type": "number",
+          "default": 10,
+          "min": 1,
+          "max": 1000,
+          "description": "Минимальный общий revenue за период ($)"
+        },
+        "confidence_level": {
+          "type": "number",
+          "default": 80,
+          "min": 50,
+          "max": 99,
+          "description": "Уровень доверительного интервала (%)"
+        }
+      }
+    }
+  },
+  "problem_detection": {
+    "sleepy_campaign_finder": {
+      "name": "Заснувшие кампании",
+      "description": "Находит остановившиеся кампании",
+      "params": {
+        "recent_days": {
+          "type": "number",
+          "default": 3,
+          "min": 1,
+          "max": 365,
+          "description": "Количество последних дней без активности"
+        },
+        "history_days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней истории для сравнения"
+        },
+        "min_clicks_before": {
+          "type": "number",
+          "default": 50,
+          "min": 10,
+          "max": 10000,
+          "description": "Минимальное количество кликов в период истории"
+        },
+        "drop_threshold": {
+          "type": "number",
+          "default": 90,
+          "min": 50,
+          "max": 100,
+          "description": "Процент падения трафика для определения 'заснувшей' кампании"
+        }
+      }
+    },
+    "cpl_margin_monitor": {
+      "name": "Маржа CPL",
+      "description": "Следит за margin в CPL кампаниях",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для текущего периода"
+        },
+        "min_revenue": {
+          "type": "number",
+          "default": 10,
+          "min": 1,
+          "max": 100,
+          "description": "Минимальный revenue для включения в анализ ($)"
+        },
+        "margin_threshold": {
+          "type": "number",
+          "default": 5,
+          "min": 0,
+          "max": 100,
+          "description": "Порог минимальной маржи в долларах"
+        },
+        "margin_percent_threshold": {
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 100,
+          "description": "Порог минимальной маржи в процентах"
+        }
+      }
+    },
+    "conversion_drop_alert": {
+      "name": "Падение конверсии",
+      "description": "Обнаруживает падение CR кампаний",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для текущего и предыдущего периода"
+        },
+        "drop_threshold": {
+          "type": "number",
+          "default": 30,
+          "min": 10,
+          "max": 90,
+          "description": "Минимальное падение CR для определения проблемы"
+        },
+        "min_clicks": {
+          "type": "number",
+          "default": 100,
+          "min": 10,
+          "max": 10000,
+          "description": "Минимальное количество кликов за текущий период"
+        }
+      }
+    },
+    "approval_delay_impact": {
+      "name": "Задержка апрувов",
+      "description": "Оценивает влияние задержек апрувов на кэшфлоу",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 14,
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней для анализа апрувов"
+        },
+        "min_approvals": {
+          "type": "number",
+          "default": 10,
+          "min": 5,
+          "max": 1000,
+          "description": "Минимальное количество апрувов для включения в анализ"
+        },
+        "delay_threshold": {
+          "type": "number",
+          "default": 3,
+          "min": 1,
+          "max": 14,
+          "description": "Минимальная задержка для определения проблемы"
+        }
+      }
+    },
+    "zombie_campaign_detector": {
+      "name": "Мертвые кампании",
+      "description": "Находит кампании с тратами но без лидов",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа зомби-кампаний"
+        },
+        "min_spend": {
+          "type": "number",
+          "default": 5.0,
+          "min": 1,
+          "max": 10000,
+          "description": "Минимальный средний расход для включения в анализ"
+        },
+        "min_clicks": {
+          "type": "number",
+          "default": 20,
+          "min": 10,
+          "max": 10000,
+          "description": "Минимальное среднее количество кликов в день"
+        },
+        "min_cr": {
+          "type": "number",
+          "default": 0.1,
+          "min": 0.01,
+          "max": 5.0,
+          "description": "Минимальный CR для определения зомби (если CR ниже - проблема)"
+        },
+        "min_days": {
+          "type": "number",
+          "default": 2,
+          "min": 1,
+          "max": 365,
+          "description": "Минимальное количество дней продолжения проблемы"
+        }
+      }
+    },
+    "source_fatigue_detector": {
+      "name": "Выгорание источника",
+      "description": "Определяет выгорание источников трафика",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней для анализа (текущий и предыдущий период)"
+        },
+        "cpc_growth_threshold": {
+          "type": "number",
+          "default": 40,
+          "min": 10,
+          "max": 100,
+          "description": "Минимальный рост CPC для определения выгорания"
+        },
+        "cr_drop_threshold": {
+          "type": "number",
+          "default": 20,
+          "min": 5,
+          "max": 100,
+          "description": "Информационный порог падения CR (не используется в фильтре)"
+        },
+        "min_clicks": {
+          "type": "number",
+          "default": 100,
+          "min": 50,
+          "max": 10000,
+          "description": "Минимальное количество кликов в обоих периодах"
+        }
+      }
+    }
+  },
+  "opportunities": {
+    "hidden_gems_finder": {
+      "name": "Скрытые точки роста",
+      "description": "Находит недооцененные кампании с потенциалом роста",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней для анализа кампаний"
+        },
+        "roi_threshold": {
+          "type": "number",
+          "default": 30,
+          "min": 10,
+          "max": 200,
+          "description": "Минимальный средний ROI для включения в список"
+        },
+        "max_daily_spend": {
+          "type": "number",
+          "default": 5.0,
+          "min": 1,
+          "max": 10000,
+          "description": "Максимальный средний расход для поиска недооцененных кампаний"
+        },
+        "min_daily_spend": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.5,
+          "max": 10000,
+          "description": "Минимальный средний расход для включения в анализ"
+        },
+        "volatility_threshold": {
+          "type": "number",
+          "default": 2.0,
+          "min": 0.1,
+          "max": 5.0,
+          "description": "Максимальный коэффициент вариации ROI (2.0 = 200%)"
+        },
+        "min_profitable_days": {
+          "type": "number",
+          "default": 2,
+          "min": 1,
+          "max": 365,
+          "description": "Минимальное количество дней с revenue > 0 для включения в анализ"
+        },
+        "only_profitable_days": {
+          "type": "boolean",
+          "default": true,
+          "description": "Учитывать только дни с выручкой > 0 при расчете волатильности"
+        }
+      }
+    },
+    "sudden_winner_detector": {
+      "name": "Неожиданный лидер",
+      "description": "Обнаруживает кампании с внезапным ростом эффективности",
+      "params": {
+        "recent_days": {
+          "type": "number",
+          "default": 3,
+          "min": 1,
+          "max": 365,
+          "description": "Количество последних дней для оценки текущих показателей"
+        },
+        "comparison_days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "Количество предыдущих дней для сравнения"
+        },
+        "roi_growth_threshold": {
+          "type": "number",
+          "default": 50,
+          "min": 20,
+          "max": 200,
+          "description": "Минимальный процент роста ROI для определения победителя"
+        },
+        "cr_growth_threshold": {
+          "type": "number",
+          "default": 100,
+          "min": 50,
+          "max": 300,
+          "description": "Минимальный процент роста CR для определения победителя"
+        },
+        "min_clicks": {
+          "type": "number",
+          "default": 50,
+          "min": 10,
+          "max": 10000,
+          "description": "Минимальное количество кликов в текущем периоде"
+        }
+      }
+    },
+    "scaling_candidates": {
+      "name": "Готовы к росту",
+      "description": "Выявляет стабильные прибыльные кампании, готовые к масштабированию",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 14,
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней для анализа кампаний"
+        },
+        "roi_threshold": {
+          "type": "number",
+          "default": 50,
+          "min": 20,
+          "max": 200,
+          "description": "Минимальный ROI для включения в список"
+        },
+        "min_daily_spend": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.5,
+          "max": 10000,
+          "description": "Минимальный средний расход для включения в анализ"
+        },
+        "volatility_threshold": {
+          "type": "number",
+          "default": 0.3,
+          "min": 0.1,
+          "max": 1.0,
+          "description": "Максимальный коэффициент вариации ROI (0.3 = 30%)"
+        },
+        "cpc_growth_limit": {
+          "type": "number",
+          "default": 20,
+          "min": 10,
+          "max": 50,
+          "description": "Максимально допустимый рост CPC для определения отсутствия выгорания"
+        }
+      }
+    },
+    "breakout_alert": {
+      "name": "Прорыв",
+      "description": "Находит кампании с прорывом после периода стагнации",
+      "params": {
+        "stagnation_days": {
+          "type": "number",
+          "default": 10,
+          "min": 5,
+          "max": 365,
+          "description": "Количество дней стабильных показателей перед прорывом"
+        },
+        "stagnation_threshold": {
+          "type": "number",
+          "default": 20,
+          "min": 10,
+          "max": 50,
+          "description": "Максимальное отклонение ROI в период стагнации"
+        },
+        "recent_days": {
+          "type": "number",
+          "default": 3,
+          "min": 1,
+          "max": 365,
+          "description": "Количество последних дней для определения прорыва"
+        },
+        "breakout_threshold": {
+          "type": "number",
+          "default": 30,
+          "min": 20,
+          "max": 100,
+          "description": "Минимальный процент роста ROI для определения прорыва"
+        },
+        "traffic_change_limit": {
+          "type": "number",
+          "default": 50,
+          "min": 20,
+          "max": 100,
+          "description": "Максимально допустимое изменение кликов между периодами"
+        },
+        "min_clicks": {
+          "type": "number",
+          "default": 50,
+          "min": 10,
+          "max": 10000,
+          "description": "Минимальное количество кликов в период прорыва"
+        }
+      }
+    }
+  },
+  "segmentation": {
+    "smart_consolidator": {
+      "name": "Умное объединение",
+      "description": "Объединение похожих малобюджетных кампаний",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней для анализа кампаний"
+        },
+        "max_daily_spend": {
+          "type": "number",
+          "default": 2.0,
+          "min": 1,
+          "max": 10000,
+          "description": "Максимальный средний расход для малобюджетных кампаний"
+        },
+        "min_campaigns_per_cluster": {
+          "type": "number",
+          "default": 3,
+          "min": 2,
+          "max": 10,
+          "description": "Минимальное количество кампаний для формирования кластера"
+        },
+        "similarity_threshold": {
+          "type": "number",
+          "default": 0.8,
+          "min": 0.5,
+          "max": 1.0,
+          "description": "Минимальная схожесть метрик для объединения (0.8 = 80%)"
+        },
+        "min_total_clicks": {
+          "type": "number",
+          "default": 50,
+          "min": 10,
+          "max": 10000,
+          "description": "Минимальное количество кликов за период для включения в анализ"
+        }
+      }
+    },
+    "performance_segmenter": {
+      "name": "Сегменты эффективности",
+      "description": "Разделение кампаний на топ/средние/слабые",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней для анализа кампаний"
+        },
+        "min_daily_spend": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.5,
+          "max": 10000,
+          "description": "Минимальный средний расход для включения в сегментацию"
+        },
+        "min_clicks": {
+          "type": "number",
+          "default": 50,
+          "min": 10,
+          "max": 10000,
+          "description": "Минимальное количество кликов за период для включения в анализ"
+        }
+      }
+    },
+    "source_group_matrix": {
+      "name": "Матрица источник-группа",
+      "description": "Построение матрицы эффективности источник-группа",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней для анализа"
+        },
+        "min_cell_spend": {
+          "type": "number",
+          "default": 10.0,
+          "min": 5,
+          "max": 10000,
+          "description": "Минимальный общий расход для включения ячейки в матрицу"
+        },
+        "min_campaigns": {
+          "type": "number",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "description": "Минимальное количество кампаний для ячейки матрицы"
+        }
+      }
+    }
+  },
+  "portfolio": {
+    "portfolio_health_index": {
+      "name": "Здоровье портфеля",
+      "description": "Рассчитывает общий индекс здоровья портфеля кампаний от 0 до 100",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа портфеля"
+        },
+        "min_cost": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 10000,
+          "description": "Минимальный расход для включения кампании в анализ"
+        },
+        "min_leads": {
+          "type": "number",
+          "default": 50,
+          "min": 1,
+          "max": 1000,
+          "description": "Минимальное количество лидов для включения кампании"
+        },
+        "roi_weight": {
+          "type": "number",
+          "default": 30,
+          "min": 0,
+          "max": 100,
+          "description": "Вес средневзвешенного ROI в итоговом индексе"
+        },
+        "profitable_weight": {
+          "type": "number",
+          "default": 25,
+          "min": 0,
+          "max": 100,
+          "description": "Вес доли прибыльных кампаний в итоговом индексе"
+        },
+        "stability_weight": {
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 100,
+          "description": "Вес стабильности метрик в итоговом индексе"
+        },
+        "diversification_weight": {
+          "type": "number",
+          "default": 15,
+          "min": 0,
+          "max": 100,
+          "description": "Вес диверсификации портфеля в итоговом индексе"
+        },
+        "trend_weight": {
+          "type": "number",
+          "default": 10,
+          "min": 0,
+          "max": 100,
+          "description": "Вес тренда последних дней в итоговом индексе"
+        }
+      }
+    },
+    "total_performance_tracker": {
+      "name": "Общая динамика",
+      "description": "Отслеживает динамику общих показателей портфеля",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа портфеля"
+        },
+        "min_change_threshold": {
+          "type": "number",
+          "default": 2.0,
+          "min": 0.1,
+          "max": 50,
+          "description": "Минимальное изменение метрики для генерации уведомления"
+        },
+        "high_roi_threshold": {
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 200,
+          "description": "Порог для определения высокого ROI"
+        },
+        "high_cost_change_threshold": {
+          "type": "number",
+          "default": 20,
+          "min": 5,
+          "max": 10000,
+          "description": "Порог значительного изменения расходов"
+        }
+      }
+    },
+    "risk_assessment": {
+      "name": "Оценка рисков",
+      "description": "Выявляет и квантифицирует риски портфеля",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа портфеля"
+        },
+        "min_cost": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 10000,
+          "description": "Минимальный расход для включения кампании в анализ"
+        },
+        "min_leads": {
+          "type": "number",
+          "default": 50,
+          "min": 1,
+          "max": 1000,
+          "description": "Минимальное количество лидов для включения кампании"
+        },
+        "high_concentration_threshold": {
+          "type": "number",
+          "default": 50,
+          "min": 20,
+          "max": 100,
+          "description": "Порог высокой концентрации риска на один источник"
+        }
+      }
+    },
+    "diversification_score": {
+      "name": "Диверсификация",
+      "description": "Оценивает диверсификацию рисков портфеля",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа диверсификации"
+        },
+        "min_cost": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 10000,
+          "description": "Минимальный расход для включения кампании в анализ"
+        },
+        "min_leads": {
+          "type": "number",
+          "default": 50,
+          "min": 1,
+          "max": 1000,
+          "description": "Минимальное количество лидов для включения кампании"
+        },
+        "max_single_source_share": {
+          "type": "number",
+          "default": 30,
+          "min": 10,
+          "max": 100,
+          "description": "Максимальная безопасная доля одного источника в портфеле"
+        },
+        "max_single_group_share": {
+          "type": "number",
+          "default": 30,
+          "min": 10,
+          "max": 100,
+          "description": "Максимальная безопасная доля одной группы в портфеле"
+        },
+        "hhi_threshold": {
+          "type": "number",
+          "default": 0.25,
+          "min": 0.1,
+          "max": 1.0,
+          "description": "Индекс Херфиндаля-Хиршмана: порог высокой концентрации (0-1)"
+        },
+        "critical_source_share": {
+          "type": "number",
+          "default": 40,
+          "min": 20,
+          "max": 100,
+          "description": "Критически высокая доля одного источника"
+        }
+      }
+    },
+    "budget_optimizer": {
+      "name": "Оптимизация бюджета",
+      "description": "Предлагает оптимальное перераспределение бюджетов между кампаниями",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа кампаний"
+        },
+        "max_change_percent": {
+          "type": "number",
+          "default": 30,
+          "min": 5,
+          "max": 100,
+          "description": "Максимальный процент изменения бюджета в одной рекомендации"
+        },
+        "min_cost": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 10000,
+          "description": "Минимальный расход для включения кампании в анализ"
+        },
+        "min_clicks": {
+          "type": "number",
+          "default": 50,
+          "min": 1,
+          "max": 10000,
+          "description": "Минимальное количество кликов для включения кампании"
+        }
+      }
+    }
+  },
+  "sources_offers": {
+    "network_performance_monitor": {
+      "name": "Эффективность сетей",
+      "description": "Мониторит эффективность партнерских сетей",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 14,
+          "min": 3,
+          "max": 365,
+          "description": "Количество дней для анализа производительности сетей"
+        },
+        "min_cost": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 10000,
+          "description": "Минимальный расход для включения сети в анализ"
+        },
+        "slow_approval_threshold": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 30,
+          "description": "Количество дней задержки, после которого апрув считается медленным"
+        },
+        "many_campaigns_threshold": {
+          "type": "number",
+          "default": 10,
+          "min": 1,
+          "max": 100,
+          "description": "Количество кампаний, после которого сеть считается крупной"
+        }
+      }
+    },
+    "source_quality_scorer": {
+      "name": "Качество источников",
+      "description": "Оценивает качество источников трафика",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа источников"
+        },
+        "min_clicks": {
+          "type": "number",
+          "default": 100,
+          "min": 10,
+          "max": 10000,
+          "description": "Минимальное количество кликов для включения источника в анализ"
+        },
+        "excellent_threshold": {
+          "type": "number",
+          "default": 80,
+          "min": 50,
+          "max": 100,
+          "description": "Минимальный score для отличного качества источника"
+        },
+        "good_threshold": {
+          "type": "number",
+          "default": 60,
+          "min": 30,
+          "max": 100,
+          "description": "Минимальный score для хорошего качества источника"
+        },
+        "poor_threshold": {
+          "type": "number",
+          "default": 40,
+          "min": 10,
+          "max": 100,
+          "description": "Минимальный score для удовлетворительного качества"
+        },
+        "unstable_threshold": {
+          "type": "number",
+          "default": 50,
+          "min": 10,
+          "max": 100,
+          "description": "Минимальный score стабильности для стабильных источников"
+        }
+      }
+    },
+    "offer_profitability_ranker": {
+      "name": "Рейтинг офферов",
+      "description": "Ранжирует офферы по комплексной прибыльности",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Количество дней для анализа офферов"
+        },
+        "min_cost": {
+          "type": "number",
+          "default": 10.0,
+          "min": 0,
+          "max": 10000,
+          "description": "Минимальный расход за период для фильтрации офферов"
+        },
+        "min_roi_for_scaling": {
+          "type": "number",
+          "default": 30,
+          "min": 0,
+          "max": 200,
+          "description": "Минимальный ROI для рекомендации масштабирования оффера"
+        },
+        "min_approval_rate": {
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 100,
+          "description": "Минимальная здоровая норма апрува для оффера"
+        },
+        "max_approval_rate": {
+          "type": "number",
+          "default": 80,
+          "min": 0,
+          "max": 100,
+          "description": "Максимальная здоровая норма апрува для оффера"
+        }
+      }
+    },
+    "offer_lifecycle_tracker": {
+      "name": "Цикл оффера",
+      "description": "Определяет стадию жизни офферов",
+      "params": {
+        "days": {
+          "type": "number",
+          "default": 14,
+          "min": 7,
+          "max": 365,
+          "description": "Количество дней для анализа цикла оффера"
+        },
+        "min_days_active": {
+          "type": "number",
+          "default": 3,
+          "min": 1,
+          "max": 365,
+          "description": "Минимальное количество дней с данными для включения оффера в анализ"
+        },
+        "min_cost": {
+          "type": "number",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 10000,
+          "description": "Минимальный расход для включения оффера в анализ"
+        },
+        "new_stage_days": {
+          "type": "number",
+          "default": 7,
+          "min": 1,
+          "max": 365,
+          "description": "Максимальное количество дней активности для стадии 'Новый'"
+        },
+        "mature_stage_days": {
+          "type": "number",
+          "default": 14,
+          "min": 7,
+          "max": 365,
+          "description": "Минимальное количество дней активности для стадии 'Зрелый'"
+        },
+        "dying_stage_days": {
+          "type": "number",
+          "default": 7,
+          "min": 3,
+          "max": 365,
+          "description": "Минимальное количество дней снижения для стадии 'Умирающий'"
+        },
+        "dead_stage_days": {
+          "type": "number",
+          "default": 5,
+          "min": 3,
+          "max": 365,
+          "description": "Количество последних дней для анализа тренда оффера"
+        }
+      }
+    }
+  }
+}

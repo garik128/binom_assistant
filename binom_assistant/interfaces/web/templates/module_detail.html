@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module_name }} - Binom Assistant{% endblock %}
+{% block page_title %}{{ module_name }}{% endblock %}
+
+{% block content %}
+<div class="module-detail-container">
+    <!-- Хедер модуля -->
+    <div class="module-header">
+        <div class="module-header-left">
+            <div class="module-title-section">
+                <h1 id="moduleTitle">{{ module_name }}</h1>
+                <span class="module-status-badge" id="moduleStatus">idle</span>
+            </div>
+            <p class="module-description" id="moduleDescription">Загрузка информации о модуле...</p>
+        </div>
+
+        <div class="module-header-right">
+            <button class="btn-primary" id="runModuleBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Запустить
+            </button>
+
+            <div class="dropdown">
+                <button class="btn-secondary" id="exportBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Экспорт
+                </button>
+                <div class="dropdown-menu" id="exportMenu">
+                    <button class="dropdown-item" data-format="json">Экспорт в JSON</button>
+                    <button class="dropdown-item" data-format="csv">Экспорт в CSV</button>
+                </div>
+            </div>
+
+            <button class="btn-secondary" id="clearCacheBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Очистить историю
+            </button>
+        </div>
+    </div>
+
+    <!-- Вкладки -->
+    <div class="module-tabs">
+        <button class="tab-btn active" data-tab="results">Результаты анализа</button>
+        <button class="tab-btn" data-tab="charts">Графики</button>
+        <button class="tab-btn" data-tab="alerts">Алерты</button>
+        <button class="tab-btn" data-tab="history">История запусков</button>
+        <button class="tab-btn" data-tab="settings">Настройки</button>
+        <button class="tab-btn" data-tab="about">О модуле</button>
+    </div>
+
+    <!-- Контент вкладок -->
+    <div class="module-content">
+        <!-- Вкладка: Результаты анализа -->
+        <div class="tab-content active" id="tab-results">
+            <div class="results-summary" id="resultsSummary">
+                <!-- Сводка загружается через JS -->
+            </div>
+
+            <div class="results-table-section">
+                <h3>Детальные данные</h3>
+                <div id="resultsTable">
+                    <!-- Таблица загружается через JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка: Графики -->
+        <div class="tab-content" id="tab-charts">
+            <div id="chartsContainer">
+                <!-- Графики загружаются через JS -->
+            </div>
+        </div>
+
+        <!-- Вкладка: Алерты -->
+        <div class="tab-content" id="tab-alerts">
+            <div id="alertsContainer">
+                <!-- Алерты загружаются через JS -->
+            </div>
+        </div>
+
+        <!-- Вкладка: История запусков -->
+        <div class="tab-content" id="tab-history">
+            <div class="history-controls">
+                <select class="filter-select" id="historyPeriodFilter">
+                    <option value="7">Последние 7 дней</option>
+                    <option value="14">Последние 14 дней</option>
+                    <option value="30">Последние 30 дней</option>
+                    <option value="all">Вся история</option>
+                </select>
+            </div>
+            <div id="historyContainer">
+                <!-- История загружается через JS -->
+            </div>
+        </div>
+
+        <!-- Вкладка: Настройки -->
+        <div class="tab-content" id="tab-settings">
+            <div class="settings-form">
+                <div class="setting-group">
+                      <div class="params-grid">
+                        <div class="setting-item">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="alertsEnabled">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-text">Генерация алертов</span>
+                            </label>
+                            <small>Включить или отключить создание алертов модулем</small>
+                        </div>
+
+                        <div class="setting-item">
+                            <label for="moduleSchedulePreset">Расписание запуска</label>
+                            <select id="moduleSchedulePreset" class="setting-input">
+                                <option value="">Не запускать автоматически</option>
+                                <option value="0 * * * *">Каждый час</option>
+                                <option value="0 */2 * * *">Каждые 2 часа</option>
+                                <option value="0 */4 * * *">Каждые 4 часа</option>
+                                <option value="0 */6 * * *">Каждые 6 часов</option>
+                                <option value="0 */12 * * *">Каждые 12 часов</option>
+                                <option value="0 0 * * *">Ежедневно в 00:00</option>
+                                <option value="0 9 * * *">Ежедневно в 09:00</option>
+                                <option value="0 12 * * *">Ежедневно в 12:00</option>
+                                <option value="0 9 * * 1">Еженедельно (понедельник в 9:00)</option>
+                                <option value="0 3 * * 0">Еженедельно (воскресенье в 03:00)</option>
+                                <option value="custom">Свой формат cron</option>
+                            </select>
+                            <small>Автоматический запуск модуля по расписанию</small>
+                            <input type="text" id="moduleSchedule" placeholder="0 */6 * * *" class="setting-input" style="display: none; margin-top: 0.5rem;">
+                            <small class="setting-help" style="display: none;">Формат: минута час день месяц день_недели</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h3>Параметры модуля</h3>
+                    <div id="moduleParams" class="params-grid">
+                        <!-- Параметры загружаются через JS -->
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="btn-primary btn-success" id="saveAndRunBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Сохранить и запустить
+                    </button>
+                    <button class="btn-primary" id="saveSettingsBtn">Сохранить настройки</button>
+                    <button class="btn-secondary" id="resetSettingsBtn">Сбросить по умолчанию</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка: О модуле -->
+        <div class="tab-content" id="tab-about">
+            <div class="about-module">
+                <div class="about-section">
+                    <h3>Описание модуля</h3>
+                    <p id="aboutDescription">Загрузка...</p>
+                </div>
+
+                <div class="about-section">
+                    <h3>Алгоритм работы</h3>
+                    <div id="aboutAlgorithm">Загрузка...</div>
+                </div>
+
+                <div class="about-section">
+                    <h3>Используемые метрики</h3>
+                    <ul id="aboutMetrics">
+                        <!-- Метрики загружаются через JS -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Модульная система -->
+<script src="/static/js/modules/_registry.js?v=5"></script>
+<script src="/static/js/modules/_utils.js?v=6"></script>
+
+<!-- Модули (загружаются все сразу) -->
+<script src="/static/js/modules/bleeding_detector.js?v=5"></script>
+<script src="/static/js/modules/zero_approval_alert.js?v=5"></script>
+<script src="/static/js/modules/spend_spike_monitor.js?v=5"></script>
+<script src="/static/js/modules/waste_campaign_finder.js?v=5"></script>
+<script src="/static/js/modules/traffic_quality_crash.js?v=5"></script>
+<script src="/static/js/modules/squeezed_offer.js?v=5"></script>
+<script src="/static/js/modules/microtrend_scanner.js?v=5"></script>
+<script src="/static/js/modules/momentum_tracker.js?v=5"></script>
+<script src="/static/js/modules/recovery_detector.js?v=5"></script>
+<script src="/static/js/modules/acceleration_monitor.js?v=5"></script>
+<script src="/static/js/modules/trend_reversal_finder.js?v=5"></script>
+<script src="/static/js/modules/volatility_calculator.js?v=5"></script>
+<script src="/static/js/modules/consistency_scorer.js?v=5"></script>
+<script src="/static/js/modules/reliability_index.js?v=5"></script>
+<script src="/static/js/modules/performance_stability.js?v=5"></script>
+<script src="/static/js/modules/roi_forecast.js?v=5"></script>
+<script src="/static/js/modules/profitability_horizon.js?v=5"></script>
+<script src="/static/js/modules/approval_rate_predictor.js?v=5"></script>
+<script src="/static/js/modules/campaign_lifecycle_stage.js?v=5"></script>
+<script src="/static/js/modules/revenue_projection.js?v=5"></script>
+<script src="/static/js/modules/sleepy_campaign_finder.js?v=5"></script>
+<script src="/static/js/modules/cpl_margin_monitor.js?v=5"></script>
+<script src="/static/js/modules/conversion_drop_alert.js?v=5"></script>
+<script src="/static/js/modules/approval_delay_impact.js?v=5"></script>
+<script src="/static/js/modules/zombie_campaign_detector.js?v=5"></script>
+<script src="/static/js/modules/source_fatigue_detector.js?v=5"></script>
+<script src="/static/js/modules/hidden_gems_finder.js?v=5"></script>
+<script src="/static/js/modules/sudden_winner_detector.js?v=5"></script>
+<script src="/static/js/modules/scaling_candidates.js?v=5"></script>
+<script src="/static/js/modules/breakout_alert.js?v=5"></script>
+<script src="/static/js/modules/smart_consolidator.js?v=5"></script>
+<script src="/static/js/modules/performance_segmenter.js?v=5"></script>
+<script src="/static/js/modules/source_group_matrix.js?v=5"></script>
+<script src="/static/js/modules/portfolio_health_index.js?v=5"></script>
+<script src="/static/js/modules/diversification_score.js?v=5"></script>
+<script src="/static/js/modules/risk_assessment.js?v=5"></script>
+<script src="/static/js/modules/budget_optimizer.js?v=5"></script>
+<script src="/static/js/modules/network_performance_monitor.js?v=5"></script>
+<script src="/static/js/modules/offer_profitability_ranker.js?v=5"></script>
+<script src="/static/js/modules/total_performance_tracker.js?v=5"></script>
+<script src="/static/js/modules/source_quality_scorer.js?v=5"></script>
+<script src="/static/js/modules/offer_lifecycle_tracker.js?v=5"></script>
+
+<!-- Основной скрипт (загружается последним) -->
+<script src="/static/js/module_detail.js?v=31"></script>
+{% endblock %}

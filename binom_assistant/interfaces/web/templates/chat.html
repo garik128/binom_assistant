@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}AI Ассистент - Binom Assistant{% endblock %}
+{% block page_title %}AI Агент{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/chat.css?v=4">
+    <link rel="stylesheet" href="/static/css/sidebar_compact.css">
+    <link rel="stylesheet" href="/static/css/agent-selector.css">
+{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <!-- Сворачиваемый сайдбар -->
+    <aside class="chat-sidebar" id="chatSidebar">
+        <div class="sidebar-header">
+            <button class="btn-new-chat" id="newChatBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Новый чат
+            </button>
+        </div>
+
+        <!-- Поиск по истории -->
+        <div class="sidebar-search">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Поиск по чатам..." id="chatSearchInput">
+        </div>
+
+        <!-- Список проектов и чатов -->
+        <div class="sidebar-content">
+            <!-- Шаблоны промптов -->
+            <div class="chat-section">
+                <div class="section-header" data-section="templates">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                    </svg>
+                    Шаблоны
+                    <button class="btn-add-template" id="addTemplateBtn" title="Добавить шаблон">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="chat-list" id="templatesList">
+                    <!-- Шаблоны загружаются из LocalStorage через JavaScript -->
+                </div>
+                <button class="btn-show-more" id="showMoreTemplatesBtn" style="display: none;" onclick="showMoreTemplates()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 9l-7 7-7-7"/>
+                    </svg>
+                    Показать еще
+                </button>
+            </div>
+
+            <!-- История чатов -->
+            <div class="chat-section">
+                <div class="section-header" data-section="history">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                    </svg>
+                    История чатов
+                </div>
+                <div class="chat-list" id="chatsList">
+                    <!-- Чаты загружаются из БД через JavaScript -->
+                </div>
+                <button class="btn-show-more" id="showMoreChatsBtn" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 9l-7 7-7-7"/>
+                    </svg>
+                    Показать еще
+                </button>
+                <button class="btn-delete-all-chats" id="deleteAllChatsBtn" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                    Удалить все
+                </button>
+            </div>
+        </div>
+
+        <!-- Кнопка сворачивания -->
+        <button class="sidebar-toggle" id="sidebarToggle" title="Свернуть сайдбар">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6"/>
+            </svg>
+        </button>
+    </aside>
+
+    <!-- Основная область чата -->
+    <main class="chat-main">
+        <!-- Шапка чата -->
+        <header class="chat-header">
+            <button class="sidebar-toggle-mobile" id="sidebarToggleMobile">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12h18M3 6h18M3 18h18"/>
+                </svg>
+            </button>
+
+          
+            <div class="chat-controls">
+<!-- Выбор агента по категории -->
+                <div class="agent-selector">
+                    <button class="btn-select-agent" id="selectAgentBtn" title="Выбрать специализированного агента">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            <circle cx="12" cy="12" r="10"/>
+                        </svg>
+                        <span id="selectedAgentLabel">Обычный чат</span>
+                    </button>
+                </div>
+
+                <!-- Выбор модели -->
+                <div class="model-selector">
+                    <label for="modelSelect">Модель:</label>
+                    <select id="modelSelect" class="model-select">
+                        <option value="openai/gpt-4.1-mini">GPT-4.1 Mini (default)</option>
+                    </select>
+                    <button class="btn-select-model" id="selectModelBtn" title="Выбрать модель">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 8v8M8 12h8"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Настройки контекста -->
+                <div class="context-settings">
+                    <label for="contextLimit" title="Количество сообщений истории для передачи в AI">Контекст:</label>
+                    <input type="number" id="contextLimit" value="10" min="1" max="50" style="width: 60px;">
+                </div>
+
+                
+
+                <!-- Информация о токенах -->
+                <div class="token-info" id="tokenInfo" style="display: none;">
+                    <span class="token-badge" title="Использовано токенов">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                        <span id="tokenCount">0</span>
+                    </span>
+                </div>
+
+                <!-- Стоимость модели -->
+                <div class="model-price-info" id="modelPriceInfo" style="display: none;">
+                    <span class="price-badge" title="Стоимость за 1M токенов">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        <span id="modelPrice">-</span>
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Область сообщений -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Приветственное сообщение -->
+            <div class="welcome-message">
+                <div class="welcome-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                    </svg>
+                </div>
+                <h2>Добро пожаловать в AI Ассистент</h2>
+                <p>Задайте вопрос или опишите задачу. Я помогу вам с анализом данных, настройкой системы и многим другим.</p>
+
+                <div class="example-prompts">
+                    <button class="example-prompt" data-prompt="Проанализируй последние кампании за неделю">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        Проанализируй последние кампании
+                    </button>
+                    <button class="example-prompt" data-prompt="Какие модули аналитики доступны?">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        Какие модули аналитики доступны?
+                    </button>
+                    <button class="example-prompt" data-prompt="Помоги настроить алерты">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <path d="M12 9v4M12 17h.01"/>
+                        </svg>
+                        Помоги настроить алерты
+                    </button>
+                </div>
+            </div>
+
+            <!-- Демо сообщения для примера -->
+            <div class="message user-message">
+                <div class="message-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <div class="message-text">Как проанализировать эффективность кампаний за последний месяц?</div>
+                </div>
+            </div>
+
+            <div class="message ai-message">
+                <div class="message-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <div class="message-text">
+                        <p>Для анализа эффективности кампаний за последний месяц я рекомендую использовать следующие модули:</p>
+                        <ol>
+                            <li><strong>Total Performance Tracker</strong> - покажет общую картину по всем кампаниям</li>
+                            <li><strong>Offer Profitability Ranker</strong> - поможет найти самые прибыльные офферы</li>
+                            <li><strong>Risk Assessment</strong> - выявит проблемные кампании</li>
+                        </ol>
+                        <p>Перейти к модулям аналитики?</p>
+                    </div>
+                    <div class="message-actions">
+                        <button class="message-action-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                            </svg>
+                            Копировать
+                        </button>
+                        <button class="message-action-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                            </svg>
+                            Экспорт
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Поле ввода -->
+        <div class="chat-input-wrapper">
+            <div class="chat-input-container">
+                <textarea
+                    id="chatInput"
+                    class="chat-input"
+                    placeholder="Введите сообщение... (Shift+Enter для новой строки)"
+                    rows="1"
+                ></textarea>
+                <button class="chat-send-btn" id="sendBtn" title="Отправить (Enter)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="chat-input-hint">
+                Нажмите Enter для отправки, Shift+Enter для новой строки
+            </div>
+        </div>
+    </main>
+
+    <!-- Модальное окно для выбора моделей -->
+    <div class="model-modal" id="modelModal">
+        <div class="model-modal-overlay"></div>
+        <div class="model-modal-content">
+            <div class="model-modal-header">
+                <h3>Выбор AI модели</h3>
+                <button class="model-modal-close" id="closeModelModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="model-modal-body">
+                <!-- Предупреждение -->
+                <div class="model-warning">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <path d="M12 9v4M12 17h.01"/>
+                    </svg>
+                    <span>Показаны только провайдры с поддержкой function calling у большинства моделей (для запуска Python скриптов)</span>
+                </div>
+
+                <!-- Поиск -->
+                <div class="model-search">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="modelSearchInput" placeholder="Поиск моделей..." autocomplete="off">
+                </div>
+
+                <!-- Список моделей -->
+                <div class="model-list-container">
+                    <div class="model-list-loading" id="modelListLoading">
+                        <div class="loading-spinner"></div>
+                        <p>Загрузка моделей...</p>
+                    </div>
+                    <div class="model-list" id="modelList" style="display: none;">
+                        <!-- Модели будут добавлены через JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="model-modal-footer">
+                <div class="model-footer-info">
+                    
+                    <span>Нажмите на "<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.003-.003.001a.752.752 0 01-.704 0l-.003-.001z"/>
+                    </svg>", чтобы добавить модель в избранное</span>
+                </div>
+                <button class="btn-secondary" id="closeModelModalBtn">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно выбора агента -->
+    <div class="agent-modal" id="agentModal">
+        <div class="agent-modal-overlay"></div>
+        <div class="agent-modal-content">
+            <div class="agent-modal-header">
+                <h3>Выбор специализированного агента</h3>
+                <button class="agent-modal-close" id="closeAgentModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="agent-modal-body">
+                <!-- Описание -->
+                <div class="agent-description">
+                    <p>Выберите специализированного агента с доступом к определенным модулям аналитики, или используйте обычный чат без модулей.</p>
+                </div>
+
+                <!-- Список категорий агентов -->
+                <div class="agent-categories">
+                    <!-- Обычный чат (без модулей) -->
+                    <div class="agent-category" data-category="">
+                        <div class="agent-category-header">
+                            <div class="agent-category-icon">💬</div>
+                            <div class="agent-category-info">
+                                <h4>Обычный чат</h4>
+                                <p>Общение с AI без использования модулей аналитики</p>
+                                <span class="agent-category-modules">Не имеет доступа к БД</span>
+                            </div>
+                        </div>
+                        <div class="agent-category-actions">
+                            <button class="btn-agent-select" onclick="selectAgentCategory('');">Выбрать</button>
+                        </div>
+                    </div>
+
+                    <!-- Категории будут загружены через JavaScript -->
+                    <div id="agentCategoriesList"></div>
+                </div>
+            </div>
+            <div class="agent-modal-footer">
+                <button class="btn-secondary" id="closeAgentModalBtn">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для редактирования промптов агентов -->
+    <div class="prompt-modal" id="promptModal">
+        <div class="prompt-modal-overlay"></div>
+        <div class="prompt-modal-content">
+            <div class="prompt-modal-header">
+                <h3 id="promptModalTitle">Системные промпты агента</h3>
+                <button class="prompt-modal-close" id="closePromptModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="prompt-modal-body">
+                <div class="prompt-tabs">
+                    <button class="prompt-tab active" data-tab="current" id="currentTab">Текущий промпт</button>
+                    <button class="prompt-tab" data-tab="default" id="defaultTab">По умолчанию</button>
+                </div>
+
+                <div class="prompt-tab-content active" id="currentTabContent">
+                    <div class="prompt-status" id="promptStatus"></div>
+                    <textarea id="currentPromptTextarea" class="prompt-textarea" rows="20"></textarea>
+                </div>
+
+                <div class="prompt-tab-content" id="defaultTabContent">
+                    <div class="prompt-info">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        <span>Это дефолтный промпт, который используется по умолчанию. Вы можете просмотреть его, но редактировать нельзя.</span>
+                    </div>
+                    <textarea id="defaultPromptTextarea" class="prompt-textarea" rows="20" readonly></textarea>
+                </div>
+            </div>
+            <div class="prompt-modal-footer">
+                <button class="btn-secondary" id="closePromptModalBtn">Закрыть</button>
+                <button class="btn-danger" id="resetPromptBtn" style="display: none;">Сбросить к дефолтному</button>
+                <button class="btn-primary" id="savePromptBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для шаблонов -->
+    <div class="template-modal" id="templateModal">
+        <div class="template-modal-overlay"></div>
+        <div class="template-modal-content">
+            <div class="template-modal-header">
+                <h3 id="templateModalTitle">Новый шаблон</h3>
+                <button class="template-modal-close" id="closeTemplateModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="template-modal-body">
+                <div class="template-form-group">
+                    <label for="templateName">Название шаблона</label>
+                    <input type="text" id="templateName" placeholder="Например: Анализ ROI" class="template-input">
+                </div>
+                <div class="template-form-group">
+                    <label for="templatePrompt">Текст промпта</label>
+                    <textarea id="templatePrompt" rows="6" placeholder="Введите текст промпта..." class="template-textarea"></textarea>
+                </div>
+                <div class="template-form-group">
+                    <label>Иконка</label>
+                    <div class="template-icons-grid" id="templateIconsGrid">
+                        <button class="template-icon-option" data-icon="chart" title="График">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 3v18h18"/>
+                                <path d="m19 9-5 5-4-4-3 3"/>
+                            </svg>
+                        </button>
+                        <button class="template-icon-option" data-icon="grid" title="Сетка">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                        </button>
+                        <button class="template-icon-option" data-icon="alert" title="Алерт">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <path d="M12 9v4M12 17h.01"/>
+                            </svg>
+                        </button>
+                        <button class="template-icon-option" data-icon="file" title="Документ">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                            </svg>
+                        </button>
+                        <button class="template-icon-option" data-icon="search" title="Поиск">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="m21 21-4.35-4.35"/>
+                            </svg>
+                        </button>
+                        <button class="template-icon-option" data-icon="settings" title="Настройки">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="template-modal-footer">
+                <button class="btn-secondary" id="cancelTemplateBtn">Отмена</button>
+                <button class="btn-primary" id="saveTemplateBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+
+<style>
+@media (max-width: 480px) {    
+.content-wrapper {padding: 0px !important;}
+.chat-sidebar.compact .sidebar-toggle {transform: rotate(180deg); right: -10px;}
+.chat-messages {border-radius: 0;}
+}
+</style>
+
+<!-- Markdown парсер -->
+<script src="/static/js/marked.min.js"></script>
+
+<!-- Подсветка синтаксиса кода -->
+<link rel="stylesheet" href="/static/css/highlight-atom-one-dark.min.css">
+<script src="/static/js/highlight.min.js"></script>
+
+<script src="/static/js/chat.js?v=35"></script>
+{% endblock %}

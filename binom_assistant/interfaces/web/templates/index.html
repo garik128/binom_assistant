@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд - Binom Assistant{% endblock %}
+{% block page_title %}Дашборд{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Фильтры периода и сводка -->
+    <div class="dashboard-header">
+        <div class="period-selector">
+            <button class="period-btn" data-period="1d">Сегодня</button>
+            <button class="period-btn" data-period="yesterday">Вчера</button>
+            <button class="period-btn active" data-period="7d">7 дней</button>
+            <button class="period-btn" data-period="14d">14 дней</button>
+            <button class="period-btn" data-period="30d">30 дней</button>
+            <button class="period-btn" data-period="this_month">Этот месяц</button>
+            <button class="period-btn" data-period="last_month">Прошлый месяц</button>
+        </div>
+
+        <!-- Сводка по источникам, офферам и партнеркам -->
+        <div class="summary-info" id="summaryInfo">
+            <div class="summary-line">
+                <svg class="summary-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"></path>
+                </svg>
+                <span class="summary-text">Топ источник: <span id="tsTop">-</span> • Топ оффер: <span id="topOffer">-</span> • Топ партнерка: <span id="topNetwork">-</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистические карточки -->
+    <div class="stats-grid">
+        <!-- Карточки загружаются через JS -->
+        <div class="stat-card skeleton">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line skeleton-value"></div>
+            <div class="skeleton-line skeleton-subtitle"></div>
+        </div>
+        <div class="stat-card skeleton">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line skeleton-value"></div>
+            <div class="skeleton-line skeleton-subtitle"></div>
+        </div>
+        <div class="stat-card skeleton">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line skeleton-value"></div>
+            <div class="skeleton-line skeleton-subtitle"></div>
+        </div>
+        <div class="stat-card skeleton">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line skeleton-value"></div>
+            <div class="skeleton-line skeleton-subtitle"></div>
+        </div>
+        <div class="stat-card skeleton">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line skeleton-value"></div>
+            <div class="skeleton-line skeleton-subtitle"></div>
+        </div>
+    </div>
+
+    <!-- Графики -->
+    <div class="charts-row charts-row-3">
+        <div class="chart-card">
+            <h3>ROI по дням</h3>
+            <div class="chart-container">
+                <canvas id="roiChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Расходы по источникам</h3>
+            <div class="chart-container">
+                <canvas id="spendChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Доходы по партнеркам</h3>
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+        <!-- Таблица топ кампаний -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2>Топ кампании</h2>
+            <div class="top-campaigns-tabs">
+                <button class="tab-btn active" data-sort="roi">По ROI</button>
+                <button class="tab-btn" data-sort="revenue">По доходу</button>
+                <button class="tab-btn" data-sort="cost">По расходу</button>
+                <button class="tab-btn" data-sort="profit">По прибыли</button>
+                <button class="tab-btn" data-sort="clicks">По кликам</button>
+                <button class="tab-btn" data-sort="leads">По лидам</button>
+            </div>
+        </div>
+        <div id="topCampaignsTable">
+            <!-- Таблица загружается через JS -->
+            {% include 'components/skeletons.html' %}
+        </div>
+    </div>
+
+    <!-- Дополнительные графики -->
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>Тренд доходов и расходов</h3>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Сравнение периодов</h3>
+            <div class="momentum-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <button class="tab-btn active" data-metric="roi">ROI</button>
+                <button class="tab-btn" data-metric="revenue">Доход</button>
+                <button class="tab-btn" data-metric="profit">Профит</button>
+                <button class="tab-btn" data-metric="clicks">Клики</button>
+                <button class="tab-btn" data-metric="cr">CR</button>
+            </div>
+            <small style="display: block; color: var(--text-muted); margin-bottom: 0.75rem;">Текущий vs предыдущий период аналогичной длины</small>
+            <div class="chart-container">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Графики трендов -->
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>Изменения метрик (%)</h3>
+            <small style="display: block; color: var(--text-muted); margin-bottom: 0.75rem;">Процентное изменение ключевых показателей между периодами</small>
+            <div class="chart-container">
+                <canvas id="deltaChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Динамика показателей</h3>
+            <div class="sparkline-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <button class="tab-btn active" data-metric="clicks">Клики</button>
+                <button class="tab-btn" data-metric="leads">Лиды</button>
+                <button class="tab-btn" data-metric="profit">Профит</button>
+                <button class="tab-btn" data-metric="cr">CR</button>
+                <button class="tab-btn" data-metric="campaigns">Кампании</button>
+            </div>
+            <small style="display: block; color: var(--text-muted); margin-bottom: 0.75rem;">Ежедневный тренд выбранной метрики за период</small>
+            <div class="chart-container">
+                <canvas id="sparklineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Алерты по категориям -->
+    <div class="charts-row charts-row-3">
+        <div class="chart-card">
+            <h3 style="color: var(--roi-negative); display: flex; align-items: center; gap: 0.5rem;">
+                <img src="/static/icons/critical-ef4444.png" alt="critical" style="width: 20px; height: 20px;">
+                Критичные алерты
+            </h3>
+            <div id="criticalAlerts" style="min-height: 200px;">
+                <!-- Загружается через JS -->
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3 style="color: #f59e0b; display: flex; align-items: center; gap: 0.5rem;">
+                <img src="/static/icons/warning-f59e0b.png" alt="high" style="width: 20px; height: 20px;">
+                Важные
+            </h3>
+            <div id="highAlerts" style="min-height: 200px;">
+                <!-- Загружается через JS -->
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3 style="color: #A0AFFF; display: flex; align-items: center; gap: 0.5rem;">
+                <img src="/static/icons/info-A0AFFF.png" alt="medium" style="width: 20px; height: 20px;">
+                Средние
+            </h3>
+            <div id="mediumAlerts" style="min-height: 200px;">
+                <!-- Загружается через JS -->
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/modules/_utils.js?v=6"></script>
+<script src="/static/js/dashboard.js?v={{ range(1, 10000) | random }}"></script>
+{% endblock %}

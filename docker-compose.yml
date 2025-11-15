@@ -1,0 +1,62 @@
+services:
+  binom-assistant:
+    # Используем готовый образ из GitHub Container Registry
+    image: ghcr.io/garik128/binom_assistant:latest
+
+    # Имя контейнера
+    container_name: binom-assistant
+
+    # Политика перезапуска
+    restart: unless-stopped
+
+    # Порты: по умолчанию доступны снаружи (для IP:port режима)
+    # Для режима с nginx будет изменено на 127.0.0.1:8000:8000
+    ports:
+      - "0.0.0.0:8000:8000"
+
+    # Переменные окружения
+    environment:
+      - TZ=Europe/Moscow
+      - PYTHONUNBUFFERED=1
+      # Production режим
+      - ENVIRONMENT=production
+      - DEBUG=false
+      # Уровень логирования (INFO для production, DEBUG для разработки)
+      - LOG_LEVEL=INFO
+
+    # Монтируем volumes
+    volumes:
+      # Код приложения (для git pull обновлений)
+      - ./binom_assistant:/app/binom_assistant
+      # SQLite база данных
+      - ./data:/app/data
+      # Логи приложения (ВАЖНО: путь должен совпадать с путем в logging_setup.py)
+      - ./logs:/app/binom_assistant/logs
+      # Бэкапы базы данных
+      - ./backups:/app/backups
+      # .env файл (read-only) - копируем его в правильное место
+      - ./binom_assistant/.env:/app/binom_assistant/.env:ro
+
+    # Настройки логирования с ротацией
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "/app/scripts/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+    # Networks (опционально, если нужны дополнительные сети)
+    # networks:
+    #   - binom-network
+
+# Определение networks (раскомментируйте если нужно)
+# networks:
+#   binom-network:
+#     driver: bridge
