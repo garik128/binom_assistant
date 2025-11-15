@@ -312,18 +312,34 @@ async function updateLastUpdateTime() {
 
 /**
  * Проверка состояния системы и обновление индикатора
+ * С exponential backoff при повторяющихся ошибках
  */
 let healthCheckFailCount = 0;
+let healthCheckAbortController = null;
+
 async function updateSystemStatus() {
     const statusDot = document.getElementById('systemStatusDot');
     const uptimeEl = document.getElementById('systemUptime');
     if (!statusDot) return;
 
+    // Отменяем предыдущий запрос если он еще выполняется
+    if (healthCheckAbortController) {
+        healthCheckAbortController.abort();
+    }
+
+    // Создаем новый AbortController
+    healthCheckAbortController = new AbortController();
+
     try {
-        const health = await api.get('/system/health');
+        // Используем более короткий таймаут для health check
+        const health = await api.get('/system/health', 10000);
 
         // Сброс счетчика ошибок при успешном запросе
+        if (healthCheckFailCount > 0) {
+            console.log(`[Health Check] Recovered after ${healthCheckFailCount} failures`);
+        }
         healthCheckFailCount = 0;
+        healthCheckAbortController = null;
 
         // Убираем все классы статуса
         statusDot.classList.remove('status-online', 'status-warning', 'status-error');
@@ -364,17 +380,23 @@ async function updateSystemStatus() {
         }
 
     } catch (error) {
-        healthCheckFailCount++;
+        // Игнорируем ошибки отмены запроса
+        if (error.name === 'AbortError') {
+            return;
+        }
 
-        // Логируем только первую ошибку, чтобы не засорять консоль
-        if (healthCheckFailCount === 1) {
-            console.warn('Ошибка проверки статуса системы:', error.message);
+        healthCheckFailCount++;
+        healthCheckAbortController = null;
+
+        // Логируем только первую ошибку и каждую 10-ю, чтобы не засорять консоль
+        if (healthCheckFailCount === 1 || healthCheckFailCount % 10 === 0) {
+            console.warn(`[Health Check] Failed (attempt ${healthCheckFailCount}):`, error.message);
         }
 
         // В случае ошибки показываем error статус
         statusDot.classList.remove('status-online', 'status-warning', 'status-error');
         statusDot.classList.add('status-error');
-        statusDot.title = 'Не удалось получить статус системы';
+        statusDot.title = `Не удалось получить статус системы (ошибок: ${healthCheckFailCount})`;
 
         if (uptimeEl) {
             uptimeEl.textContent = 'N/A';
@@ -535,23 +557,34 @@ async function updateRefreshButtonTooltip() {
 
 /**
  * Проверяет и восстанавливает отслеживание активных фоновых задач
+ * С адаптивным интервалом проверки
  */
 async function checkAndResumeActiveTasks() {
     let checkAttempts = 0;
-    const maxCheckAttempts = 12; // 12 попыток * 5 секунд = 1 минута
+    const maxCheckAttempts = 6; // Уменьшено с 12 до 6 попыток
+    let checkInterval = 3000; // Начальный интервал 3 секунды (вместо 5)
 
     const performCheck = async () => {
         try {
             checkAttempts++;
-            const response = await api.get('/system/tasks/active');
+            const response = await api.get('/system/tasks/active', 10000); // 10 секунд таймаут
             const activeTasks = response.tasks || [];
 
             if (activeTasks.length === 0) {
+                // Логируем только каждую 3-ю попытку, чтобы не спамить
+                if (checkAttempts % 3 === 1 || checkAttempts === maxCheckAttempts) {
+                    console.log(`[Task Check] No active tasks (attempt ${checkAttempts}/${maxCheckAttempts})`);
+                }
+
                 // Если задач нет и это не первая попытка
                 if (checkAttempts < maxCheckAttempts) {
-                    console.log(`No active tasks found (attempt ${checkAttempts}/${maxCheckAttempts}), will check again in 5 seconds...`);
+                    // Увеличиваем интервал после 3-й попытки (3s -> 5s -> 10s)
+                    if (checkAttempts >= 3) {
+                        checkInterval = Math.min(checkInterval * 1.5, 10000);
+                    }
                     return false; // Продолжаем периодическую проверку
                 }
+                console.log('[Task Check] Stopping periodic check - no active tasks found');
                 return true; // Останавливаем проверку
             }
 
@@ -673,20 +706,18 @@ async function checkAndResumeActiveTasks() {
         }
     };
 
-    // Первая проверка с задержкой 2 секунды
-    setTimeout(async () => {
+    // Рекурсивная функция для периодической проверки с переменным интервалом
+    const scheduleNextCheck = async () => {
         const shouldStop = await performCheck();
 
-        // Если нужно продолжать проверку - запускаем периодический опрос
         if (!shouldStop) {
-            const periodicCheck = setInterval(async () => {
-                const stop = await performCheck();
-                if (stop) {
-                    clearInterval(periodicCheck);
-                }
-            }, 5000); // Проверяем каждые 5 секунд
+            // Запускаем следующую проверку с актуальным интервалом
+            setTimeout(scheduleNextCheck, checkInterval);
         }
-    }, 2000); // Начальная задержка 2 секунды
+    };
+
+    // Первая проверка с задержкой 2 секунды
+    setTimeout(scheduleNextCheck, 2000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
