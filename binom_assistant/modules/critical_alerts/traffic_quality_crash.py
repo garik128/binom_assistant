@@ -62,8 +62,8 @@ class TrafficQualityCrash(BaseModule):
         """Возвращает конфигурацию по умолчанию"""
         return ModuleConfig(
             enabled=True,
-            schedule="0 9 * * *",  # ежедневно в 9:00
-            alerts_enabled=True,  # Критический модуль - алерты включены по умолчанию
+            schedule="",  # Критический модуль - автозапуск выключен по умолчанию
+            alerts_enabled=False,  # Алерты выключены по умолчанию
             timeout_seconds=30,
             cache_ttl_seconds=3600,
             params={
